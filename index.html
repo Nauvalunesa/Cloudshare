@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkShare Pro - Modern URL Shortener & File Sharing</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --primary-solid: #667eea;
+            --secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            
+            /* Light Theme */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1a202c;
+            --text-secondary: #718096;
+            --text-muted: #a0aec0;
+            --border: #e2e8f0;
+            --input-bg: #ffffff;
+            --input-text: #1a202c;
+            --input-border: #e2e8f0;
+            --input-focus: #667eea;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            
+            /* Border Radius */
+            --radius: 12px;
+            --radius-lg: 16px;
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-card: #2d3748;
+            --text-primary: #f7fafc;
+            --text-secondary: #e2e8f0;
+            --text-muted: #a0aec0;
+            --border: #4a5568;
+            --input-bg: #2d3748;
+            --input-text: #f7fafc;
+            --input-border: #4a5568;
+            --input-focus: #667eea;
+        }
+
+        /* ===== RESET & BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: var(--primary);
+            padding: 3rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            letter-spacing: -0.02em;
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 2rem;
+            font-weight: 400;
+        }
+
+        /* ===== THEME TOGGLE ===== */
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1) rotate(180deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main {
+            padding: 2rem 0;
+            min-height: calc(100vh - 200px);
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        /* ===== SERVICE CARDS ===== */
+        .service-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary);
+        }
+
+        .service-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .service-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-right: 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .service-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        /* ===== FORMS ===== */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .form-label .required {
+            color: var(--error);
+            margin-left: 0.25rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--input-border);
+            border-radius: var(--radius);
+            background: var(--input-bg);
+            color: var(--input-text);
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--input-focus);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .form-input:required:invalid {
+            border-color: var(--error);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            font-family: inherit;
+            box-shadow: var(--shadow);
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            width: auto;
+        }
+
+        /* ===== FILE UPLOAD ===== */
+        .file-upload {
+            position: relative;
+            display: block;
+            width: 100%;
+            padding: 2rem 1rem;
+            border: 3px dashed var(--border);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-primary);
+        }
+
+        .file-upload:hover {
+            border-color: var(--primary-solid);
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .file-upload input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-content {
+            pointer-events: none;
+        }
+
+        .file-upload-icon {
+            font-size: 2.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .file-upload-text {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .file-upload-subtext {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        /* File name display with overflow handling */
+        .file-selected {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            color: var(--primary-solid);
+            word-break: break-all;
+            max-width: 100%;
+            overflow-wrap: break-word;
+        }
+
+        /* ===== PROGRESS BAR ===== */
+        .progress-container {
+            margin-top: 1.25rem;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-speed {
+            font-weight: 600;
+            color: var(--primary-solid);
+        }
+
+        /* ===== RESULTS ===== */
+        .result {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 2px solid var(--success);
+            border-radius: var(--radius-lg);
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .result-url {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-link {
+            padding: 0.75rem;
+            background: var(--input-bg);
+            border: 2px solid var(--input-border);
+            border-radius: var(--radius);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            word-break: break-all;
+            color: var(--input-text);
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .copy-btn {
+            padding: 0.75rem;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+            transform: scale(1.02);
+        }
+
+        .expires-info {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: var(--bg-primary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        /* ===== QR CODE SECTION ===== */
+        .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .qr-code {
+            width: 100px;
+            height: 100px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .qr-actions {
+            width: 100%;
+        }
+
+        .qr-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .qr-description {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        /* ===== ERROR MESSAGES ===== */
+        .error-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid var(--error);
+            border-radius: var(--radius-lg);
+            color: var(--error);
+            display: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        /* ===== CONSOLE LOG ===== */
+        .console-log {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border: 1px solid var(--border);
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+
+        .console-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .console-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .log-entry {
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: var(--radius);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            border-left: 3px solid;
+            background: var(--bg-primary);
+            word-break: break-word;
+        }
+
+        .log-info {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .log-error {
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .log-success {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        /* ===== WHATSAPP BUTTON ===== */
+        .whatsapp-btn {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            width: 56px;
+            height: 56px;
+            background: #25d366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            text-decoration: none;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .whatsapp-btn:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+
+        /* Desktop - Large screens (1024px+) */
+        @media (min-width: 1024px) {
+            .container {
+                padding: 0 2rem;
+            }
+
+            .header {
+                padding: 4rem 0;
+            }
+
+            .logo {
+                font-size: 3.5rem;
+            }
+
+            .tagline {
+                font-size: 1.25rem;
+            }
+
+            .main {
+                padding: 4rem 0;
+            }
+
+            .services {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 3rem;
+            }
+
+            .service-card {
+                padding: 2.5rem;
+            }
+
+            .service-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.75rem;
+                margin-right: 1.5rem;
+            }
+
+            .service-title {
+                font-size: 1.75rem;
+            }
+
+            .form-row {
+                grid-template-columns: 2fr 1fr;
+                gap: 1.5rem;
+            }
+
+            .form-input, .form-select {
+                padding: 1rem 1.25rem;
+                font-size: 1rem;
+            }
+
+            .btn {
+                padding: 1rem 2rem;
+                font-size: 1rem;
+                width: auto;
+            }
+
+            .file-upload {
+                padding: 3rem;
+            }
+
+            .file-upload-icon {
+                font-size: 4rem;
+            }
+
+            .result {
+                padding: 2rem;
+            }
+
+            .result-url {
+                flex-direction: row;
+                align-items: center;
+            }
+
+            .copy-btn {
+                width: auto;
+                padding: 1rem;
+            }
+
+            .qr-section {
+                flex-direction: row;
+                text-align: left;
+            }
+
+            .qr-code {
+                width: 120px;
+                height: 120px;
+            }
+
+            .console-log {
+                padding: 2rem;
+                max-height: 400px;
+            }
+
+            .theme-toggle {
+                top: 2rem;
+                right: 2rem;
+                width: 56px;
+                height: 56px;
+            }
+
+            .whatsapp-btn {
+                bottom: 2rem;
+                right: 2rem;
+                width: 64px;
+                height: 64px;
+                font-size: 1.75rem;
+            }
+        }
+
+        /* Tablet (768px - 1023px) */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .container {
+                padding: 0 1.5rem;
+            }
+
+            .header {
+                padding: 3.5rem 0;
+            }
+
+            .logo {
+                font-size: 3rem;
+            }
+
+            .tagline {
+                font-size: 1.15rem;
+            }
+
+            .main {
+                padding: 3rem 0;
+            }
+
+            .service-card {
+                padding: 2rem;
+            }
+
+            .service-icon {
+                width: 52px;
+                height: 52px;
+                font-size: 1.6rem;
+            }
+
+            .service-title {
+                font-size: 1.6rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .qr-section {
+                flex-direction: row;
+                text-align: left;
+            }
+
+            .qr-code {
+                width: 110px;
+                height: 110px;
+            }
+        }
+
+        /* Mobile (max-width: 767px) */
+        @media (max-width: 767px) {
+            .header {
+                padding: 2rem 0;
+            }
+
+            .logo {
+                font-size: 2rem;
+            }
+
+            .tagline {
+                font-size: 1rem;
+            }
+
+            .main {
+                padding: 1.5rem 0;
+            }
+
+            .service-card {
+                padding: 1.25rem;
+            }
+
+            .service-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.5rem;
+            }
+
+            .service-icon {
+                margin-right: 0;
+                margin-bottom: 0.5rem;
+            }
+
+            .form-label {
+                font-size: 0.85rem;
+            }
+
+            .form-input, .form-select {
+                padding: 0.75rem;
+                font-size: 0.9rem;
+            }
+
+            .btn {
+                padding: 0.75rem 1.25rem;
+                font-size: 0.9rem;
+            }
+
+            .file-upload {
+                padding: 1.5rem 1rem;
+            }
+
+            .file-upload-icon {
+                font-size: 2rem;
+            }
+
+            .result {
+                padding: 1.25rem;
+            }
+
+            .result-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.5rem;
+            }
+
+            .result-title {
+                font-size: 1rem;
+            }
+
+            .qr-code {
+                width: 90px;
+                height: 90px;
+            }
+
+            .console-log {
+                padding: 1.25rem;
+                max-height: 250px;
+            }
+
+            .console-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .log-entry {
+                font-size: 0.7rem;
+                padding: 0.4rem 0.6rem;
+            }
+        }
+
+        /* Extra small screens (max-width: 480px) */
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 0.75rem;
+            }
+
+            .logo {
+                font-size: 1.75rem;
+            }
+
+            .tagline {
+                font-size: 0.9rem;
+            }
+
+            .service-card {
+                padding: 1rem;
+            }
+
+            .service-title {
+                font-size: 1.25rem;
+            }
+
+            .form-input, .form-select {
+                padding: 0.625rem;
+                font-size: 0.85rem;
+            }
+
+            .btn {
+                padding: 0.625rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            .qr-code {
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        /* ===== ACCESSIBILITY ===== */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Focus styles */
+        .btn:focus,
+        .form-input:focus,
+        .form-select:focus,
+        .theme-toggle:focus {
+            outline: 3px solid var(--primary-solid);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <i class="fas fa-moon" id="theme-icon"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <i class="fas fa-link"></i>
+                    LinkShare Pro
+                </h1>
+                <p class="tagline">Modern URL shortening and secure file sharing with instant QR codes</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <div class="services">
+                <!-- URL Shortener -->
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-icon">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <h2 class="service-title">URL Shortener</h2>
+                    </div>
+                    
+                    <form id="url-form" onsubmit="shortenUrl(event)">
+                        <div class="form-group">
+                            <label for="original_url" class="form-label">
+                                <i class="fas fa-globe"></i>
+                                Original URL <span class="required">*</span>
+                            </label>
+                            <input 
+                                type="url" 
+                                id="original_url" 
+                                name="original_url" 
+                                class="form-input" 
+                                placeholder="https://example.com/very-long-url"
+                                required
+                                aria-describedby="url-help"
+                            >
+                            <small id="url-help" class="sr-only">Enter the URL you want to shorten</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="custom_alias" class="form-label">
+                                <i class="fas fa-edit"></i>
+                                Custom Alias (Optional)
+                            </label>
+                            <input 
+                                type="text" 
+                                id="custom_alias" 
+                                name="custom_alias" 
+                                class="form-input" 
+                                placeholder="my-custom-link"
+                                pattern="[a-zA-Z0-9-_]+"
+                                aria-describedby="alias-help"
+                            >
+                            <small id="alias-help" class="sr-only">Optional custom name for your short URL</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expires_in_minutes" class="form-label">
+                                <i class="fas fa-clock"></i>
+                                Expires in Minutes <span class="required">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                id="expires_in_minutes" 
+                                name="expires_in_minutes" 
+                                class="form-input" 
+                                placeholder="60"
+                                min="1"
+                                required
+                                aria-describedby="expire-help"
+                            >
+                            <small id="expire-help" class="sr-only">Required expiration time in minutes</small>
+                        </div>
+
+                        <button type="submit" class="btn" id="url-submit-btn">
+                            <i class="fas fa-compress-alt"></i>
+                            Shorten URL
+                        </button>
+                    </form>
+
+                    <div id="url-result" class="result">
+                        <div class="result-header">
+                            <div class="result-icon">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="result-title">URL Shortened Successfully!</div>
+                        </div>
+                        
+                        <div class="result-url">
+                            <input type="text" id="short-url" class="result-link" readonly>
+                            <button class="copy-btn" onclick="copyToClipboard('short-url')" aria-label="Copy short URL">
+                                <i class="fas fa-copy"></i>
+                                Copy Link
+                            </button>
+                        </div>
+                        
+                        <div id="url-expires" class="expires-info"></div>
+                        
+                        <div class="qr-section" id="url-qr-section">
+                            <img id="url-qr-code" class="qr-code" alt="QR Code" style="display: none;">
+                            <div class="qr-actions">
+                                <div class="qr-title">QR Code Generated</div>
+                                <div class="qr-description">Scan this QR code to access your shortened URL instantly</div>
+                                <button class="btn btn-secondary btn-sm" onclick="downloadQR('url-qr-code', 'url-qr')">
+                                    <i class="fas fa-download"></i>
+                                    Download QR Code
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="url-error" class="error-message"></div>
+                </div>
+
+                <!-- File Upload -->
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h2 class="service-title">File Sharing</h2>
+                    </div>
+
+                    <form id="file-form" onsubmit="uploadFile(event)">
+                        <div class="form-group">
+                            <label class="file-upload" for="file-input">
+                                <input type="file" id="file-input" name="file" required>
+                                <div class="file-upload-content">
+                                    <div class="file-upload-icon">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                    </div>
+                                    <div class="file-upload-text">Click to upload or drag and drop</div>
+                                    <div class="file-upload-subtext">Max 100MB - Any file type supported</div>
+                                    <div id="file-selected-name" class="file-selected" style="display: none;"></div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="progress-container" id="upload-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                            <div class="progress-info">
+                                <span id="progress-text">Uploading... 0%</span>
+                                <span class="progress-speed" id="progress-speed">0 KB/s</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="filename" class="form-label">
+                                <i class="fas fa-file-signature"></i>
+                                Custom Filename (Optional)
+                            </label>
+                            <input 
+                                type="text" 
+                                id="filename" 
+                                name="filename" 
+                                class="form-input" 
+                                placeholder="my-document"
+                                aria-describedby="filename-help"
+                            >
+                            <small id="filename-help" class="sr-only">Optional custom name for your file (without extension)</small>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="expire_value" class="form-label">
+                                    <i class="fas fa-hourglass-half"></i>
+                                    Expire After <span class="required">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="expire_value" 
+                                    name="expire_value" 
+                                    class="form-input" 
+                                    placeholder="24"
+                                    min="1"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="expire_unit" class="form-label">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    Time Unit <span class="required">*</span>
+                                </label>
+                                <select id="expire_unit" name="expire_unit" class="form-select" required>
+                                    <option value="">Select time unit</option>
+                                    <option value="minutes">Minutes</option>
+                                    <option value="hours">Hours</option>
+                                    <option value="days">Days</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn" id="file-submit-btn">
+                            <i class="fas fa-upload"></i>
+                            Upload File
+                        </button>
+                    </form>
+
+                    <div id="file-result" class="result">
+                        <div class="result-header">
+                            <div class="result-icon">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="result-title">File Uploaded Successfully!</div>
+                        </div>
+                        
+                        <div class="result-url">
+                            <input type="text" id="file-url" class="result-link" readonly>
+                            <button class="copy-btn" onclick="copyToClipboard('file-url')" aria-label="Copy file URL">
+                                <i class="fas fa-copy"></i>
+                                Copy Link
+                            </button>
+                        </div>
+                        
+                        <div id="file-expires" class="expires-info"></div>
+                        
+                        <div style="margin-bottom: 1rem;">
+                            <a id="download-link" href="#" class="btn btn-secondary" style="display: inline-flex; width: 100%;">
+                                <i class="fas fa-download"></i>
+                                Download File
+                            </a>
+                        </div>
+                        
+                        <div class="qr-section" id="file-qr-section">
+                            <img id="file-qr-code" class="qr-code" alt="QR Code" style="display: none;">
+                            <div class="qr-actions">
+                                <div class="qr-title">QR Code Generated</div>
+                                <div class="qr-description">Scan this QR code to download your file directly</div>
+                                <button class="btn btn-secondary btn-sm" onclick="downloadQR('file-qr-code', 'file-qr')">
+                                    <i class="fas fa-download"></i>
+                                    Download QR Code
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="file-error" class="error-message"></div>
+                </div>
+            </div>
+
+            <!-- Console Log -->
+            <div class="console-log">
+                <div class="console-header">
+                    <div class="console-title">
+                        <i class="fas fa-terminal"></i>
+                        Activity Log
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="clearLog()">
+                        <i class="fas fa-trash"></i>
+                        Clear Log
+                    </button>
+                </div>
+                <div id="log-container">
+                    <div class="log-entry log-info">
+                        <span>[INFO] Application started - Ready to shorten URLs and share files</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- WhatsApp Button -->
+    <a href="https://wa.me/6285336580720" class="whatsapp-btn pulse" target="_blank" rel="noopener noreferrer" aria-label="Contact us on WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <script>
+        // Global variables for upload tracking
+        let uploadStartTime = 0;
+        let uploadedBytes = 0;
+
+        // Utility function to format date to user's local timezone
+        function formatLocalDateTime(utcDateString) {
+            if (!utcDateString) return 'No expiration';
+            
+            // Pastikan string UTC diinterpretasi dengan benar
+            let utcDate;
+            if (utcDateString.endsWith('Z')) {
+                // Sudah dalam format UTC
+                utcDate = new Date(utcDateString);
+            } else {
+                // Tambahkan Z untuk menandakan UTC
+                utcDate = new Date(utcDateString + 'Z');
+            }
+            
+            // Konversi ke timezone lokal
+            const localDate = new Date(utcDate.getTime());
+            
+            const options = {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZoneName: 'short',
+                hour12: false
+            };
+            
+            return `Expires: ${localDate.toLocaleString('id-ID', options)}`;
+        }
+
+        // Debug function untuk melihat konversi timezone
+        function debugTimezone(utcDateString) {
+            console.log('Original UTC string:', utcDateString);
+            
+            let utcDate;
+            if (utcDateString.endsWith('Z')) {
+                utcDate = new Date(utcDateString);
+            } else {
+                utcDate = new Date(utcDateString + 'Z');
+            }
+            
+            console.log('UTC Date object:', utcDate);
+            console.log('UTC time:', utcDate.toISOString());
+            console.log('Local time:', utcDate.toLocaleString('id-ID', {
+                year: 'numeric',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZoneName: 'short',
+                hour12: false
+            }));
+            
+            return utcDate;
+        }
+
+        // Logging function
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span>[${timestamp}] ${message}</span>`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 50 entries
+            const entries = logContainer.children;
+            if (entries.length > 50) {
+                logContainer.removeChild(entries[0]);
+            }
+        }
+
+        function clearLog() {
+            const logContainer = document.getElementById('log-container');
+            logContainer.innerHTML = '<div class="log-entry log-info"><span>[INFO] Log cleared</span></div>';
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+                addLog('Switched to light theme', 'info');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+                addLog('Switched to dark theme', 'info');
+            }
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+            }
+        });
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Format speed
+        function formatSpeed(bytesPerSecond) {
+            if (bytesPerSecond === 0) return '0 KB/s';
+            const k = 1024;
+            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+            const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k));
+            return parseFloat((bytesPerSecond / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Truncate filename for display
+        function truncateFilename(filename, maxLength = 50) {
+            if (filename.length <= maxLength) return filename;
+            
+            const extension = filename.split('.').pop();
+            const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+            const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4) + '...';
+            
+            return truncatedName + '.' + extension;
+        }
+
+        // Load and display QR code
+        async function loadQRCode(qrUrl, imgElementId) {
+            try {
+                const img = document.getElementById(imgElementId);
+                img.src = qrUrl;
+                img.style.display = 'block';
+                img.onload = function() {
+                    addLog('QR code loaded and displayed', 'success');
+                };
+            } catch (error) {
+                addLog(`Error loading QR code: ${error.message}`, 'error');
+            }
+        }
+
+        // Download QR code
+        function downloadQR(imgElementId, filename) {
+            const img = document.getElementById(imgElementId);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            ctx.drawImage(img, 0, 0);
+            
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                addLog(`QR code downloaded: ${filename}.png`, 'success');
+            });
+        }
+
+        // URL Shortener
+        async function shortenUrl(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const submitBtn = document.getElementById('url-submit-btn');
+            const errorDiv = document.getElementById('url-error');
+            
+            // Hide previous errors and results
+            errorDiv.classList.remove('show');
+            document.getElementById('url-result').classList.remove('show');
+            
+            // Show loading state
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Shortening...';
+            submitBtn.disabled = true;
+            
+            const originalUrl = formData.get('original_url');
+            addLog(`Attempting to shorten URL: ${originalUrl}`, 'info');
+            
+            try {
+                const response = await fetch('/shorten', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const resultDiv = document.getElementById('url-result');
+                    const shortUrlInput = document.getElementById('short-url');
+                    const expiresDiv = document.getElementById('url-expires');
+                    
+                    shortUrlInput.value = data.short_url;
+                    
+                    // Debug timezone conversion
+                    if (data.expires_at) {
+                        debugTimezone(data.expires_at);
+                        expiresDiv.textContent = formatLocalDateTime(data.expires_at);
+                    } else {
+                        expiresDiv.textContent = 'No expiration';
+                    }
+                    
+                    // Load QR code
+                    await loadQRCode(data.qr_code_url, 'url-qr-code');
+                    
+                    resultDiv.classList.add('show');
+                    form.reset();
+                    
+                    addLog(`URL shortened successfully: ${data.code}`, 'success');
+                } else {
+                    const errorMessage = data.detail || 'An error occurred while shortening the URL';
+                    showError('url-error', errorMessage);
+                    addLog(`Error shortening URL: ${errorMessage}`, 'error');
+                }
+            } catch (error) {
+                const errorMessage = 'Network error: ' + error.message;
+                showError('url-error', errorMessage);
+                addLog(`Network error: ${error.message}`, 'error');
+            } finally {
+                submitBtn.innerHTML = '<i class="fas fa-compress-alt"></i> Shorten URL';
+                submitBtn.disabled = false;
+            }
+        }
+
+        // File Upload with Progress
+        async function uploadFile(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const submitBtn = document.getElementById('file-submit-btn');
+            const errorDiv = document.getElementById('file-error');
+            const fileInput = document.getElementById('file-input');
+            const progressContainer = document.getElementById('upload-progress');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            const progressSpeed = document.getElementById('progress-speed');
+
+            // Hide previous errors and results
+            errorDiv.classList.remove('show');
+            document.getElementById('file-result').classList.remove('show');
+
+            // Validate file
+            const file = fileInput.files[0];
+            if (!file) {
+                showError('file-error', 'No file selected');
+                addLog('File upload failed: No file selected', 'error');
+                return;
+            }
+
+            if (file.size > 100 * 1024 * 1024) {
+                showError('file-error', 'File size too large (max 100MB)');
+                addLog(`File upload failed: File too large (${formatFileSize(file.size)})`, 'error');
+                return;
+            }
+
+            // Show progress and loading state
+            progressContainer.classList.add('show');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            submitBtn.disabled = true;
+
+            // Initialize progress tracking
+            uploadStartTime = Date.now();
+            uploadedBytes = 0;
+
+            addLog(`Starting upload: ${file.name} (${formatFileSize(file.size)})`, 'info');
+
+            try {
+                // Create XMLHttpRequest for progress tracking
+                const xhr = new XMLHttpRequest();
+                
+                // Track upload progress
+                xhr.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        const currentTime = Date.now();
+                        const elapsedTime = (currentTime - uploadStartTime) / 1000; // seconds
+                        const speed = e.loaded / elapsedTime; // bytes per second
+
+                        // Update progress bar
+                        progressFill.style.width = percentComplete + '%';
+                        progressText.textContent = `Uploading... ${Math.round(percentComplete)}%`;
+                        progressSpeed.textContent = formatSpeed(speed);
+
+                        uploadedBytes = e.loaded;
+                    }
+                });
+
+                // Handle response
+                xhr.onload = async function() {
+                    if (xhr.status === 200) {
+                        const data = JSON.parse(xhr.responseText);
+                        
+                        const resultDiv = document.getElementById('file-result');
+                        const fileUrlInput = document.getElementById('file-url');
+                        const expiresDiv = document.getElementById('file-expires');
+                        const downloadLink = document.getElementById('download-link');
+
+                        fileUrlInput.value = data.file_url;
+                        downloadLink.href = data.file_url;
+                        
+                        // Debug timezone conversion
+                        if (data.expires_at) {
+                            debugTimezone(data.expires_at);
+                            expiresDiv.textContent = formatLocalDateTime(data.expires_at);
+                        } else {
+                            expiresDiv.textContent = 'No expiration';
+                        }
+
+                        // Load QR code
+                        await loadQRCode(data.qr_code_url, 'file-qr-code');
+
+                        // Show success
+                        progressFill.style.width = '100%';
+                        progressText.textContent = 'Upload complete! 100%';
+                        
+                        setTimeout(() => {
+                            progressContainer.classList.remove('show');
+                            resultDiv.classList.add('show');
+                        }, 1000);
+
+                        form.reset();
+                        resetFileUploadDisplay();
+
+                        addLog(`File uploaded successfully: ${data.filename} (${formatFileSize(data.size)})`, 'success');
+                    } else {
+                        const errorData = JSON.parse(xhr.responseText);
+                        const errorMessage = errorData.detail || 'An error occurred while uploading the file';
+                        showError('file-error', errorMessage);
+                        addLog(`Error uploading file: ${errorMessage}`, 'error');
+                        progressContainer.classList.remove('show');
+                    }
+                };
+
+                xhr.onerror = function() {
+                    const errorMessage = 'Network error occurred during upload';
+                    showError('file-error', errorMessage);
+                    addLog(`Network error: ${errorMessage}`, 'error');
+                    progressContainer.classList.remove('show');
+                };
+
+                // Send the request
+                xhr.open('POST', '/upload');
+                xhr.send(formData);
+
+            } catch (error) {
+                const errorMessage = 'Upload error: ' + error.message;
+                showError('file-error', errorMessage);
+                addLog(`Upload error: ${error.message}`, 'error');
+                progressContainer.classList.remove('show');
+            } finally {
+                submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload File';
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Reset file upload display
+        function resetFileUploadDisplay() {
+            const fileSelectedDiv = document.getElementById('file-selected-name');
+            fileSelectedDiv.style.display = 'none';
+            fileSelectedDiv.textContent = '';
+        }
+
+        // Show Error Message
+        function showError(elementId, message) {
+            const errorDiv = document.getElementById(elementId);
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 10000);
+        }
+
+        // Copy to Clipboard
+        async function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const copyBtn = element.nextElementSibling;
+            
+            try {
+                await navigator.clipboard.writeText(element.value);
+                
+                // Show success feedback
+                const originalContent = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                copyBtn.style.background = '#10b981';
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalContent;
+                    copyBtn.style.background = '';
+                }, 2000);
+                
+                addLog(`Copied to clipboard: ${element.value}`, 'success');
+                
+            } catch (error) {
+                // Fallback for older browsers
+                element.select();
+                document.execCommand('copy');
+                
+                // Show feedback
+                const originalContent = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalContent;
+                }, 2000);
+                
+                addLog(`Copied to clipboard (fallback): ${element.value}`, 'success');
+            }
+        }
+
+        // File Upload Visual Feedback
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const fileSelectedDiv = document.getElementById('file-selected-name');
+            
+            if (file) {
+                const truncatedName = truncateFilename(file.name);
+                fileSelectedDiv.textContent = `Selected: ${truncatedName}`;
+                fileSelectedDiv.style.display = 'block';
+                addLog(`File selected: ${file.name}`, 'info');
+            } else {
+                resetFileUploadDisplay();
+            }
+        });
+
+        // Drag and Drop
+        const fileUpload = document.querySelector('.file-upload');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileUpload.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileUpload.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileUpload.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            fileUpload.style.borderColor = 'var(--primary-solid)';
+            fileUpload.style.background = 'rgba(102, 126, 234, 0.05)';
+        }
+
+        function unhighlight(e) {
+            fileUpload.style.borderColor = '';
+            fileUpload.style.background = '';
+        }
+
+        fileUpload.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            document.getElementById('file-input').files = files;
+            
+            if (files[0]) {
+                const fileSelectedDiv = document.getElementById('file-selected-name');
+                const truncatedName = truncateFilename(files[0].name);
+                fileSelectedDiv.textContent = `Selected: ${truncatedName}`;
+                fileSelectedDiv.style.display = 'block';
+                addLog(`File dropped: ${files[0].name}`, 'info');
+            }
+        }
+
+        // Keyboard Navigation Enhancement
+        document.addEventListener('keydown', function(e) {
+            // Escape key to close results and errors
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.result.show, .error-message.show').forEach(element => {
+                    element.classList.remove('show');
+                });
+                addLog('Results/errors closed via Escape key', 'info');
+            }
+        });
+
+        // Auto-focus first input on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('original_url').focus();
+            addLog('Application ready - Focus set to URL input', 'info');
+        });
+    </script>
+</body>
+</html>
