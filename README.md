@@ -1,56 +1,56 @@
-# ðŸš€ LinkShare Pro - CloudShare by Nauval
+#  LinkShare Pro - CloudShare by Nauval
 
 [![Deploy](https://img.shields.io/badge/deploy-pm2-blue?style=flat-square)](https://pm2.keymetrics.io/)
 [![License](https://img.shields.io/github/license/Nauvalunesa/cloudshare?style=flat-square)](https://github.com/Nauvalunesa/cloudshare/blob/main/LICENSE)
 [![FastAPI](https://img.shields.io/badge/built%20with-FastAPI-00b300?style=flat-square)](https://fastapi.tiangolo.com/)
 
 **All-in-One File Sharing & URL Shortening API built with FastAPI**  
-ðŸ“Ž Upload & Share files instantly  
-ðŸ”— Shorten links with optional expiry  
-ðŸ“± Scan-ready QR codes for easy access  
-ðŸ“Š Real-time upload progress tracking  
+ Upload & Share files instantly  
+ Shorten links with optional expiry  
+Scan-ready QR codes for easy access  
+ Real-time upload progress tracking  
 
-> âš¡ Fast. ðŸ›¡ï¸ Secure. ðŸŒ Instant.  
+>  Fast.  Secure. Instant.  
 > Welcome to the most modern backend for sharing!
 
 ---
 
-## ðŸŒŸ Features
+##  Features
 
-- âœ… **Shorten URLs** with custom aliases & **optional** expiry
-- ðŸ“ **Upload Files** (max 100MB) with **optional** expiry timer
-- ðŸŒ€ Real-time upload progress tracker
-- ðŸ–¼ï¸ Auto QR code generation (as base64 and PNG)
-- ðŸ” Redirect handler with expiry logic
-- ðŸ“Š Stats endpoint for quick health check
-- ðŸŒ CORS-ready â€” easy frontend integration
-- ðŸ” Secure and expirable link handling
-
----
-
-## ðŸ”— Example in Action
-
-ðŸŒ Live: **[https://nauval.cloud](https://nauval.cloud)**  
-Upload a file or shorten a URL â€” get a clean short link and an instant QR code ðŸ”¥
+- ✅ **Shorten URLs** with custom aliases & **optional** expiry
+- 📂 **Upload Files** (max 100MB) with **optional** expiry timer
+- 🕗 Real-time upload progress tracker
+- 🖼️ Auto QR code generation (as base64 and PNG)
+- 🔗 Redirect handler with expiry logic
+- 📊 Stats endpoint for quick health check
+- 🌐CORS-ready â€” easy frontend integration
+- 🔒 Secure and expirable link handling
 
 ---
 
-## ðŸ› ï¸ Installation Guide
+## — Example in Action
 
-### ðŸ“¥ 1. Clone the Repository
+ Live: **[https://nauval.cloud](https://nauval.cloud)**  
+Upload a file or shorten a URL â€” get a clean short link and an instant QR code 
+
+---
+
+##  Installation Guide
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Nauvalunesa/cloudshare.git
 cd cloudshare
 ```
 
-### ðŸ“¦ 2. Install Dependencies
+### ¦ 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### ðŸš€ 3. Run with PM2
+###  3. Run with PM2
 
 ```bash
 pm2 start "python3 run.py" --name cloudshare
@@ -60,9 +60,9 @@ pm2 start "python3 run.py" --name cloudshare
 
 ---
 
-## ðŸŒ NGINX + SSL Setup (Production)
+##  NGINX + SSL Setup (Production)
 
-### ðŸ”§ nginx.conf (`/etc/nginx/nginx.conf`)
+###  nginx.conf (`/etc/nginx/nginx.conf`)
 
 ```nginx
 user www-data;
@@ -96,7 +96,7 @@ http {
 }
 ```
 
-### ðŸŒ Virtual Host: `/etc/nginx/sites-available/cloudshare.conf`
+###  Virtual Host: `/etc/nginx/sites-available/cloudshare.conf`
 
 ```nginx
 server {
@@ -142,7 +142,7 @@ server {
 }
 ```
 
-### ðŸ”’ Enable SSL with Certbot
+###  Enable SSL with Certbot
 
 ```bash
 apt install certbot python3-certbot-nginx -y
@@ -152,20 +152,7 @@ certbot renew --dry-run
 
 ---
 
-## ðŸ“ Folder Structure
 
-```
-cloudshare/
-â”œâ”€â”€ storage/
-â”œâ”€â”€ short_urls.json
-â”œâ”€â”€ main.py
-â”œâ”€â”€ run.py
-â”œâ”€â”€ requirements.txt
-â””â”€â”€ index.html (optional)
-```
-
----
-
-## ðŸ“ƒ License
+##  License
 
 MIT Â© [@Nauvalunesa](https://github.com/Nauvalunesa) 
