@@ -21,7 +21,6 @@ from datetime import datetime
 import subprocess
 import socket
 
-# Log request dari tiap IP
 ip_request_log = defaultdict(list)
 banned_ips = set()
 
@@ -43,11 +42,10 @@ class AntiDDOSMiddleware(BaseHTTPMiddleware):
             logger.warning(f"[BLOCKED] {ip} tried to access but is banned.")
             return HTMLResponse("<h1>403 Forbidden</h1><p>You are banned.</p>", status_code=403)
 
-        # Simpan timestamp untuk IP tersebut
         ip_request_log[ip] = [t for t in ip_request_log[ip] if (now - t).total_seconds() <= 10]
         ip_request_log[ip].append(now)
 
-        # Hitung request dalam 3 detik terakhir
+        
         recent_3s = [t for t in ip_request_log[ip] if (now - t).total_seconds() <= 3]
         recent_10s = ip_request_log[ip]
 
@@ -67,7 +65,7 @@ class AntiDDOSMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
         
         
-# Setup logging
+# 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -83,7 +81,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# === Directories and Storage ===
 STORAGE_DIR = "storage"
 URL_STORAGE_FILE = "short_urls.json"
 UPLOADED_FILES_FILE = "uploaded_files.json"
@@ -98,7 +95,7 @@ uploaded_files = {}
 upload_progress = {}
 html_pages = {}
 
-# === Persistence ===
+
 def save_short_urls():
     with open(URL_STORAGE_FILE, "w") as f:
         json.dump(short_urls, f, default=str)
@@ -152,12 +149,12 @@ def load_html_metadata():
                     "filename": val["filename"]
                 }
 
-# === Initial Load ===
+
 load_short_urls()
 load_uploaded_files()
 load_html_metadata()
 
-# === Utilities ===
+
 def generate_code(length=6):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
@@ -189,7 +186,7 @@ def generate_qr_base64(url: str) -> str:
     img_base64 = base64.b64encode(buffer.getvalue()).decode()
     return f"data:image/png;base64,{img_base64}"
 
-# === Routes ===
+
 
 @app.get("/", response_class=HTMLResponse)
 def index():
@@ -372,7 +369,6 @@ def download_file(filename: str):
         logger.error(f"Download error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-# === Upload HTML ===
 @app.post("/upload/html")
 async def upload_html_page(
     file: UploadFile = File(...),
@@ -411,7 +407,6 @@ async def upload_html_page(
         "expires_at": expires_at.isoformat()
     }
 
-# === View HTML by Code ===
 @app.get("/view/{code}", response_class=HTMLResponse)
 def view_uploaded_html_page(code: str):
     page = html_pages.get(code)
