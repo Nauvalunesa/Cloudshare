@@ -22,6 +22,8 @@ import subprocess
 import socket
 import time
 from functools import lru_cache
+from PIL import Image
+import hashlib
 
 # DDoS Protection Configuration
 MAX_TRACKED_IPS = 10000  # Maximum IPs to track in memory
@@ -200,14 +202,18 @@ URL_STORAGE_FILE = "short_urls.json"
 UPLOADED_FILES_FILE = "uploaded_files.json"
 HTML_STORAGE_DIR = "webpages"
 HTML_META_FILE = "html_pages.json"
+IMAGES_DIR = "images"
+BIOLINK_DATA_FILE = "biolinks.json"
 
 os.makedirs(STORAGE_DIR, exist_ok=True)
 os.makedirs(HTML_STORAGE_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
 
 short_urls = {}
 uploaded_files = {}
 upload_progress = {}
 html_pages = {}
+biolinks = {}
 
 
 def save_short_urls():
@@ -263,11 +269,30 @@ def load_html_metadata():
                     "filename": val["filename"]
                 }
 
+def save_biolinks():
+    serializable = {
+        k: {
+            **v,
+            "created_at": v["created_at"].isoformat() if isinstance(v.get("created_at"), datetime) else v.get("created_at"),
+        } for k, v in biolinks.items()
+    }
+    with open(BIOLINK_DATA_FILE, "w") as f:
+        json.dump(serializable, f, indent=2)
+
+def load_biolinks():
+    if os.path.exists(BIOLINK_DATA_FILE):
+        with open(BIOLINK_DATA_FILE, "r") as f:
+            data = json.load(f)
+            for code, val in data.items():
+                if "created_at" in val and isinstance(val["created_at"], str):
+                    val["created_at"] = datetime.fromisoformat(val["created_at"])
+                biolinks[code] = val
 
 load_short_urls()
 load_uploaded_files()
 load_html_metadata()
 load_banned_ips()  # Load banned IPs on startup
+load_biolinks()  # Load bio links on startup
 
 
 def generate_code(length=6):
@@ -747,8 +772,213 @@ def get_stats():
             "total_files": len(uploaded_files),
             "total_html_pages": len(html_pages),
             "total_snippets": len(text_snippets),
+            "total_biolinks": len(biolinks),
             "storage_dir": STORAGE_DIR,
             "html_dir": HTML_STORAGE_DIR
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Image Upload for Bio Links
+@app.post("/upload/image")
+async def upload_image(
+    request: Request,
+    file: UploadFile = File(...)
+):
+    """Upload and optimize images for bio links (profile, cover, etc.)"""
+    try:
+        client_ip = get_real_ip(request)
+
+        # Validate file type
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="Only image files allowed")
+
+        allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail=f"Supported formats: JPEG, PNG, GIF, WEBP")
+
+        # Read image data
+        image_data = await file.read()
+
+        # Size limit: 10MB for images
+        if len(image_data) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Image too large (max 10MB)")
+
+        # Open with PIL for validation and optimization
+        try:
+            img = Image.open(BytesIO(image_data))
+
+            # Validate image
+            img.verify()
+
+            # Reopen for processing (verify closes the file)
+            img = Image.open(BytesIO(image_data))
+
+            # Convert RGBA to RGB if needed
+            if img.mode == 'RGBA':
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[3])
+                img = background
+            elif img.mode not in ('RGB', 'L'):
+                img = img.convert('RGB')
+
+            # Optimize: resize if too large (max 1200px width/height)
+            max_size = 1200
+            if img.width > max_size or img.height > max_size:
+                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            # Generate unique filename using hash
+            image_hash = hashlib.md5(image_data).hexdigest()[:12]
+            ext = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+            filename = f"{image_hash}.{ext}"
+            filepath = os.path.join(IMAGES_DIR, filename)
+
+            # Save optimized image
+            img.save(filepath, optimize=True, quality=85)
+
+            # Get file size
+            file_size = os.path.getsize(filepath)
+
+            image_url = f"/images/{filename}"
+
+            return {
+                "success": True,
+                "url": image_url,
+                "filename": filename,
+                "size": file_size,
+                "dimensions": {"width": img.width, "height": img.height}
+            }
+
+        except Exception as e:
+            logger.error(f"Image processing error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid image file")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Image upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/images/{filename}")
+async def get_image(filename: str):
+    """Serve uploaded images"""
+    filepath = os.path.join(IMAGES_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(filepath)
+
+# Premium Bio Link Builder
+@app.post("/biolink/create")
+async def create_biolink(
+    request: Request,
+    username: str = Form(...),
+    display_name: str = Form(...),
+    bio: str = Form(""),
+    profile_image: Optional[str] = Form(None),
+    cover_image: Optional[str] = Form(None),
+    theme: str = Form("cosmic"),
+    links: str = Form("[]"),
+    social_links: str = Form("{}"),
+    custom_css: Optional[str] = Form(None),
+    analytics_enabled: bool = Form(True)
+):
+    """Create a premium bio link page"""
+    try:
+        # Validate username
+        if not username.replace('-', '').replace('_', '').isalnum() or len(username) < 3 or len(username) > 30:
+            raise HTTPException(status_code=400, detail="Username must be alphanumeric (3-30 chars)")
+
+        # Parse JSON fields
+        try:
+            links_data = json.loads(links)
+            social_data = json.loads(social_links)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid JSON data for links")
+
+        # Validate theme
+        valid_themes = ['cosmic', 'minimal', 'gradient', 'dark', 'neon', 'ocean', 'sunset', 'forest']
+        if theme not in valid_themes:
+            theme = 'cosmic'
+
+        # Create bio link data
+        biolink_data = {
+            "username": username,
+            "display_name": display_name,
+            "bio": bio,
+            "profile_image": profile_image,
+            "cover_image": cover_image,
+            "theme": theme,
+            "links": links_data,
+            "social_links": social_data,
+            "custom_css": custom_css,
+            "analytics_enabled": analytics_enabled,
+            "views": 0,
+            "clicks": {},
+            "created_at": datetime.utcnow()
+        }
+
+        biolinks[username] = biolink_data
+        save_biolinks()
+
+        bio_url = f"/bio/{username}"
+
+        return {
+            "success": True,
+            "url": bio_url,
+            "username": username,
+            "preview_url": f"https://nauval.cloud{bio_url}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bio link creation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/bio/{username}", response_class=HTMLResponse)
+async def view_biolink(username: str):
+    """View bio link page"""
+    biolink = biolinks.get(username)
+    if not biolink:
+        raise HTTPException(status_code=404, detail="Bio link not found")
+
+    # Increment view counter
+    biolink["views"] = biolink.get("views", 0) + 1
+    save_biolinks()
+
+    return FileResponse("biolink_viewer.html")
+
+@app.get("/api/biolink/{username}")
+async def get_biolink_data(username: str):
+    """Get bio link data (API)"""
+    biolink = biolinks.get(username)
+    if not biolink:
+        raise HTTPException(status_code=404, detail="Bio link not found")
+
+    return {
+        "username": biolink["username"],
+        "display_name": biolink["display_name"],
+        "bio": biolink["bio"],
+        "profile_image": biolink.get("profile_image"),
+        "cover_image": biolink.get("cover_image"),
+        "theme": biolink["theme"],
+        "links": biolink["links"],
+        "social_links": biolink.get("social_links", {}),
+        "custom_css": biolink.get("custom_css"),
+        "views": biolink.get("views", 0)
+    }
+
+@app.post("/api/biolink/{username}/click")
+async def track_click(username: str, link_id: str = Form(...)):
+    """Track link clicks for analytics"""
+    biolink = biolinks.get(username)
+    if not biolink:
+        raise HTTPException(status_code=404, detail="Bio link not found")
+
+    if "clicks" not in biolink:
+        biolink["clicks"] = {}
+
+    biolink["clicks"][link_id] = biolink["clicks"].get(link_id, 0) + 1
+    save_biolinks()
+
+    return {"success": True}

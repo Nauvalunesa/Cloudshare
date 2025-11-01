@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Bio Link</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        /* ===== THEME: COSMIC ===== */
+        body.theme-cosmic {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        /* ===== THEME: MINIMAL ===== */
+        body.theme-minimal {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        /* ===== THEME: GRADIENT ===== */
+        body.theme-gradient {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 10s ease infinite;
+        }
+
+        /* ===== THEME: DARK ===== */
+        body.theme-dark {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        }
+
+        /* ===== THEME: NEON ===== */
+        body.theme-neon {
+            background: linear-gradient(135deg, #ff00cc 0%, #333399 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        /* ===== THEME: OCEAN ===== */
+        body.theme-ocean {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+        }
+
+        /* ===== THEME: SUNSET ===== */
+        body.theme-sunset {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 50%, #ff4757 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 12s ease infinite;
+        }
+
+        /* ===== THEME: FOREST ===== */
+        body.theme-forest {
+            background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .container {
+            max-width: 680px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 32px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 0.8s ease;
+            position: relative;
+        }
+
+        body.theme-dark .container,
+        body.theme-neon .container {
+            background: rgba(30, 30, 40, 0.95);
+            color: #fff;
+        }
+
+        body.theme-minimal .container {
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Cover Image */
+        .cover-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .cover-image::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.95));
+        }
+
+        body.theme-dark .cover-image::after,
+        body.theme-neon .cover-image::after {
+            background: linear-gradient(to bottom, transparent, rgba(30,30,40,0.95));
+        }
+
+        .bio-content {
+            padding: 0 2rem 2.5rem 2rem;
+            position: relative;
+        }
+
+        /* Profile Section */
+        .profile-section {
+            text-align: center;
+            margin-top: -80px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .profile-image {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: 6px solid rgba(255, 255, 255, 0.95);
+            margin: 0 auto 1.5rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: white;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.theme-dark .profile-image,
+        body.theme-neon .profile-image {
+            border-color: rgba(30, 30, 40, 0.95);
+        }
+
+        .profile-image i {
+            position: relative;
+            z-index: 1;
+        }
+
+        .display-name {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body.theme-dark .display-name,
+        body.theme-neon .display-name {
+            background: linear-gradient(135deg, #ff00cc, #00d2ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        body.theme-minimal .display-name {
+            color: #333;
+            background: none;
+            -webkit-text-fill-color: #333;
+        }
+
+        .username {
+            font-size: 1.1rem;
+            color: #666;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        body.theme-dark .username,
+        body.theme-neon .username {
+            color: #aaa;
+        }
+
+        .bio-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        body.theme-dark .bio-text,
+        body.theme-neon .bio-text {
+            color: #ccc;
+        }
+
+        /* Links Container */
+        .links-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .bio-link {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1.25rem 1.75rem;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .bio-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .bio-link:hover::before {
+            left: 100%;
+        }
+
+        .bio-link:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.25);
+            border-color: #667eea;
+        }
+
+        body.theme-cosmic .bio-link:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        body.theme-gradient .bio-link:hover {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+
+        body.theme-neon .bio-link:hover {
+            background: linear-gradient(135deg, #ff00cc, #333399);
+            color: white;
+            box-shadow: 0 0 30px rgba(255, 0, 204, 0.6);
+        }
+
+        body.theme-ocean .bio-link:hover {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            color: white;
+        }
+
+        body.theme-sunset .bio-link:hover {
+            background: linear-gradient(135deg, #ff6b6b, #ffa500);
+            color: white;
+        }
+
+        body.theme-forest .bio-link:hover {
+            background: linear-gradient(135deg, #134e5e, #71b280);
+            color: white;
+        }
+
+        body.theme-dark .bio-link {
+            background: rgba(50, 50, 60, 0.6);
+            border-color: rgba(100, 100, 120, 0.3);
+            color: #fff;
+        }
+
+        body.theme-dark .bio-link:hover {
+            background: linear-gradient(135deg, #302b63, #24243e);
+            border-color: #764ba2;
+        }
+
+        body.theme-neon .bio-link {
+            background: rgba(50, 50, 80, 0.6);
+            border-color: rgba(255, 0, 204, 0.3);
+            color: #fff;
+        }
+
+        body.theme-minimal .bio-link {
+            background: #f8f9fa;
+            border-color: #dee2e6;
+        }
+
+        body.theme-minimal .bio-link:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .link-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            color: white;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .bio-link:hover .link-icon {
+            transform: rotate(360deg) scale(1.1);
+        }
+
+        body.theme-dark .link-icon,
+        body.theme-neon .link-icon {
+            background: linear-gradient(135deg, #ff00cc, #333399);
+        }
+
+        body.theme-minimal .link-icon {
+            background: linear-gradient(135deg, #6c757d, #495057);
+        }
+
+        .link-content {
+            flex: 1;
+            text-align: left;
+        }
+
+        .link-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .link-arrow {
+            font-size: 1.25rem;
+            transition: transform 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .bio-link:hover .link-arrow {
+            transform: translateX(8px);
+            opacity: 1;
+        }
+
+        /* Stats & Footer */
+        .stats-section {
+            text-align: center;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            border-top: 2px solid rgba(0,0,0,0.1);
+        }
+
+        body.theme-dark .stats-section,
+        body.theme-neon .stats-section {
+            border-top-color: rgba(255,255,255,0.1);
+        }
+
+        .views-count {
+            font-size: 0.9rem;
+            color: #888;
+            font-weight: 500;
+        }
+
+        body.theme-dark .views-count,
+        body.theme-neon .views-count {
+            color: #aaa;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: #764ba2;
+        }
+
+        body.theme-dark .footer a,
+        body.theme-neon .footer a {
+            color: #ff00cc;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error-container {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            color: #ff4757;
+            margin-bottom: 1rem;
+        }
+
+        .error-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        body.theme-dark .error-title,
+        body.theme-neon .error-title {
+            color: #fff;
+        }
+
+        .error-message {
+            font-size: 1rem;
+            color: #666;
+        }
+
+        body.theme-dark .error-message,
+        body.theme-neon .error-message {
+            color: #ccc;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem 0.5rem;
+            }
+
+            .container {
+                border-radius: 24px;
+            }
+
+            .cover-image {
+                height: 150px;
+            }
+
+            .bio-content {
+                padding: 0 1.5rem 2rem 1.5rem;
+            }
+
+            .profile-section {
+                margin-top: -60px;
+            }
+
+            .profile-image {
+                width: 110px;
+                height: 110px;
+                font-size: 3rem;
+                border-width: 5px;
+            }
+
+            .display-name {
+                font-size: 1.75rem;
+            }
+
+            .username {
+                font-size: 1rem;
+            }
+
+            .bio-text {
+                font-size: 0.95rem;
+            }
+
+            .bio-link {
+                padding: 1rem 1.25rem;
+                gap: 1rem;
+            }
+
+            .link-icon {
+                width: 42px;
+                height: 42px;
+                font-size: 1.25rem;
+            }
+
+            .link-title {
+                font-size: 1rem;
+            }
+
+            .link-arrow {
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .cover-image {
+                height: 120px;
+            }
+
+            .profile-image {
+                width: 90px;
+                height: 90px;
+                font-size: 2.5rem;
+            }
+
+            .display-name {
+                font-size: 1.5rem;
+            }
+
+            .bio-link {
+                padding: 0.875rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="theme-cosmic">
+    <div class="container">
+        <!-- Loading State -->
+        <div id="loading-state" class="loading">
+            <div class="spinner"></div>
+            <p style="color: rgba(255,255,255,0.9); font-weight: 500;">Loading bio link...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="error-container" style="display: none;">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 class="error-title">Bio Link Not Found</h2>
+            <p class="error-message">This bio link doesn't exist or has been removed.</p>
+            <a href="/" style="display: inline-block; margin-top: 1.5rem; padding: 0.875rem 2rem; background: linear-gradient(135deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 12px; font-weight: 600;">
+                Create Your Own Bio Link
+            </a>
+        </div>
+
+        <!-- Bio Link Content -->
+        <div id="bio-content" style="display: none;">
+            <div class="cover-image" id="cover-section"></div>
+
+            <div class="bio-content">
+                <div class="profile-section">
+                    <div class="profile-image" id="profile-image">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h1 class="display-name" id="display-name">Loading...</h1>
+                    <p class="username" id="username">@username</p>
+                    <p class="bio-text" id="bio-text"></p>
+                </div>
+
+                <div class="links-container" id="links-container">
+                    <!-- Links will be inserted here -->
+                </div>
+
+                <div class="stats-section">
+                    <p class="views-count">
+                        <i class="fas fa-eye"></i>
+                        <span id="views-count">0</span> views
+                    </p>
+                </div>
+            </div>
+
+            <div class="footer">
+                Powered by <a href="https://nauval.cloud" target="_blank">LinkShare Pro</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get username from URL path
+        const pathParts = window.location.pathname.split('/');
+        const username = pathParts[pathParts.length - 1];
+
+        async function loadBioLink() {
+            try {
+                const response = await fetch(`/api/biolink/${username}`);
+
+                if (!response.ok) {
+                    throw new Error('Bio link not found');
+                }
+
+                const data = await response.json();
+
+                // Update page title
+                document.getElementById('page-title').textContent = `${data.display_name} - Bio Link`;
+
+                // Apply theme
+                document.body.className = `theme-${data.theme}`;
+
+                // Set cover image
+                const coverSection = document.getElementById('cover-section');
+                if (data.cover_image) {
+                    coverSection.style.backgroundImage = `url(${data.cover_image})`;
+                }
+
+                // Set profile image
+                const profileImage = document.getElementById('profile-image');
+                if (data.profile_image) {
+                    profileImage.style.backgroundImage = `url(${data.profile_image})`;
+                    profileImage.innerHTML = '';
+                }
+
+                // Set text content
+                document.getElementById('display-name').textContent = data.display_name;
+                document.getElementById('username').textContent = `@${data.username}`;
+
+                const bioText = document.getElementById('bio-text');
+                if (data.bio) {
+                    bioText.textContent = data.bio;
+                    bioText.style.display = 'block';
+                } else {
+                    bioText.style.display = 'none';
+                }
+
+                // Set views count
+                document.getElementById('views-count').textContent = data.views || 0;
+
+                // Render links
+                const linksContainer = document.getElementById('links-container');
+                linksContainer.innerHTML = '';
+
+                if (data.links && data.links.length > 0) {
+                    data.links.forEach(link => {
+                        const linkElement = document.createElement('a');
+                        linkElement.href = link.url;
+                        linkElement.className = 'bio-link';
+                        linkElement.target = '_blank';
+                        linkElement.rel = 'noopener noreferrer';
+                        linkElement.onclick = () => trackClick(link.id);
+
+                        linkElement.innerHTML = `
+                            <div class="link-icon">
+                                <i class="${link.icon}"></i>
+                            </div>
+                            <div class="link-content">
+                                <div class="link-title">${link.title}</div>
+                            </div>
+                            <div class="link-arrow">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        `;
+
+                        linksContainer.appendChild(linkElement);
+                    });
+                }
+
+                // Show content, hide loading
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('bio-content').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading bio link:', error);
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('error-state').style.display = 'block';
+            }
+        }
+
+        async function trackClick(linkId) {
+            try {
+                await fetch(`/api/biolink/${username}/click`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `link_id=${linkId}`
+                });
+            } catch (error) {
+                console.error('Error tracking click:', error);
+            }
+        }
+
+        // Load bio link on page load
+        loadBioLink();
+    </script>
+</body>
+</html>
