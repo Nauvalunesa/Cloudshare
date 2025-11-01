@@ -20,47 +20,161 @@ from collections import defaultdict
 from datetime import datetime
 import subprocess
 import socket
+import time
+from functools import lru_cache
+
+# DDoS Protection Configuration
+MAX_TRACKED_IPS = 10000  # Maximum IPs to track in memory
+CLEANUP_INTERVAL = 300  # Clean old IPs every 5 minutes
+MAX_CONCURRENT_UPLOADS_PER_IP = 3  # Max concurrent uploads per IP
+RATE_LIMIT_STRICT = 3  # requests per second
+RATE_LIMIT_BURST = 10  # requests per 10 seconds
+RATE_LIMIT_BAN = 30  # requests per 10 seconds before permanent ban
+BANNED_IPS_FILE = "banned_ips.json"
 
 ip_request_log = defaultdict(list)
 banned_ips = set()
+active_uploads = defaultdict(int)
+qr_cache = {}  # QR code cache
+last_cleanup_time = time.time()
+
+def load_banned_ips():
+    """Load banned IPs from persistent storage"""
+    global banned_ips
+    if os.path.exists(BANNED_IPS_FILE):
+        try:
+            with open(BANNED_IPS_FILE, "r") as f:
+                banned_ips = set(json.load(f))
+            logger.info(f"Loaded {len(banned_ips)} banned IPs from storage")
+        except Exception as e:
+            logger.error(f"Error loading banned IPs: {e}")
+
+def save_banned_ips():
+    """Save banned IPs to persistent storage"""
+    try:
+        with open(BANNED_IPS_FILE, "w") as f:
+            json.dump(list(banned_ips), f)
+    except Exception as e:
+        logger.error(f"Error saving banned IPs: {e}")
+
+def cleanup_old_ips():
+    """Clean up old IPs from tracking to prevent memory leak"""
+    global last_cleanup_time
+    now = time.time()
+
+    if now - last_cleanup_time < CLEANUP_INTERVAL:
+        return
+
+    current_time = datetime.utcnow()
+    cleaned = 0
+
+    # Remove IPs that haven't made requests in the last 10 seconds
+    ips_to_remove = []
+    for ip, timestamps in list(ip_request_log.items()):
+        if not timestamps or (current_time - timestamps[-1]).total_seconds() > 10:
+            ips_to_remove.append(ip)
+
+    for ip in ips_to_remove:
+        del ip_request_log[ip]
+        cleaned += 1
+
+    # If still too many IPs, remove oldest ones
+    if len(ip_request_log) > MAX_TRACKED_IPS:
+        sorted_ips = sorted(ip_request_log.items(), key=lambda x: x[1][-1] if x[1] else datetime.min)
+        excess = len(ip_request_log) - MAX_TRACKED_IPS
+        for ip, _ in sorted_ips[:excess]:
+            del ip_request_log[ip]
+            cleaned += 1
+
+    last_cleanup_time = now
+    if cleaned > 0:
+        logger.info(f"Cleaned up {cleaned} IPs from tracking")
 
 def get_real_ip(request: Request) -> str:
+    """Extract real IP from request, handling proxies"""
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    try:
-        return request.client.host or socket.gethostbyname(socket.gethostname())
-    except:
+        ip = forwarded_for.split(",")[0].strip()
+    else:
+        try:
+            ip = request.client.host or socket.gethostbyname(socket.gethostname())
+        except:
+            ip = "unknown"
+
+    # Basic validation to prevent injection
+    if ip != "unknown" and not all(c.isdigit() or c in '.:-' for c in ip):
         return "unknown"
+
+    return ip
+
+def ban_ip_via_firewall(ip: str) -> bool:
+    """Ban IP using UFW firewall with proper timeout and validation"""
+    if ip == "unknown" or ip == "127.0.0.1" or ip.startswith("192.168.") or ip.startswith("10."):
+        return False
+
+    try:
+        # Use timeout to prevent hanging
+        result = subprocess.run(
+            ["ufw", "deny", "from", ip],
+            capture_output=True,
+            timeout=5,
+            check=False
+        )
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        logger.error(f"Timeout banning IP {ip} via UFW")
+        return False
+    except Exception as e:
+        logger.error(f"Error banning IP {ip}: {e}")
+        return False
 
 class AntiDDOSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # Run periodic cleanup
+        cleanup_old_ips()
+
         ip = get_real_ip(request)
         now = datetime.utcnow()
 
+        # Check if IP is banned
         if ip in banned_ips:
             logger.warning(f"[BLOCKED] {ip} tried to access but is banned.")
             return HTMLResponse("<h1>403 Forbidden</h1><p>You are banned.</p>", status_code=403)
 
+        # Clean old timestamps and add current request
         ip_request_log[ip] = [t for t in ip_request_log[ip] if (now - t).total_seconds() <= 10]
         ip_request_log[ip].append(now)
 
-        
-        recent_3s = [t for t in ip_request_log[ip] if (now - t).total_seconds() <= 3]
+        # Calculate request rates
+        recent_1s = [t for t in ip_request_log[ip] if (now - t).total_seconds() <= 1]
         recent_10s = ip_request_log[ip]
 
-        if len(recent_10s) > 20:
-            try:
-                subprocess.run(["ufw", "deny", "from", ip], check=False)
-                logger.warning(f"[BANNED] IP {ip} permanently banned via UFW.")
-                banned_ips.add(ip)
-            except Exception as e:
-                logger.error(f"[ERROR] Failed to ban IP {ip}: {e}")
-            return HTMLResponse("<h1>429 Too Many Requests</h1><p>You are permanently banned.</p>", status_code=429)
+        # Permanent ban if excessive requests (30+ in 10 seconds)
+        if len(recent_10s) > RATE_LIMIT_BAN:
+            if ban_ip_via_firewall(ip):
+                logger.warning(f"[BANNED] IP {ip} permanently banned via UFW ({len(recent_10s)} requests in 10s).")
+            banned_ips.add(ip)
+            save_banned_ips()
+            return HTMLResponse(
+                "<h1>429 Too Many Requests</h1><p>You are permanently banned for excessive requests.</p>",
+                status_code=429
+            )
 
-        if len(recent_3s) > 5:
-            logger.info(f"[RATE LIMITED] IP {ip} hit 429.")
-            return HTMLResponse("<h1>429 Too Many Requests</h1><p>Slow down.</p>", status_code=429)
+        # Temporary rate limit (10+ requests in 10 seconds)
+        if len(recent_10s) > RATE_LIMIT_BURST:
+            logger.info(f"[RATE LIMITED] IP {ip} exceeded burst limit ({len(recent_10s)} requests in 10s).")
+            return HTMLResponse(
+                "<h1>429 Too Many Requests</h1><p>Too many requests. Please slow down.</p>",
+                status_code=429
+            )
+
+        # Strict rate limit (3+ requests per second)
+        if len(recent_1s) > RATE_LIMIT_STRICT:
+            logger.info(f"[RATE LIMITED] IP {ip} exceeded strict limit ({len(recent_1s)} requests/sec).")
+            return HTMLResponse(
+                "<h1>429 Too Many Requests</h1><p>Request rate too high. Slow down.</p>",
+                status_code=429
+            )
 
         return await call_next(request)
         
@@ -153,6 +267,7 @@ def load_html_metadata():
 load_short_urls()
 load_uploaded_files()
 load_html_metadata()
+load_banned_ips()  # Load banned IPs on startup
 
 
 def generate_code(length=6):
@@ -248,16 +363,30 @@ def redirect_short_url(code: str):
 
 @app.get("/qr/{code}")
 def generate_qr(code: str):
+    # Check cache first to prevent CPU exhaustion
+    if code in qr_cache:
+        buffer = BytesIO(qr_cache[code])
+        return StreamingResponse(buffer, media_type="image/png")
+
     if code in short_urls:
         target = f"https://nauval.cloud/s/{code}"
     elif code in uploaded_files:
         target = f"https://nauval.cloud/download/{code}"
     else:
         raise HTTPException(status_code=404, detail="Code not found")
+
+    # Generate QR code
     img = qrcode.make(target)
     buffer = BytesIO()
     img.save(buffer, format="PNG")
     buffer.seek(0)
+    qr_data = buffer.getvalue()
+
+    # Cache the QR code (limit cache size to prevent memory issues)
+    if len(qr_cache) < 1000:
+        qr_cache[code] = qr_data
+
+    buffer = BytesIO(qr_data)
     return StreamingResponse(buffer, media_type="image/png")
 
 @app.get("/upload-progress/{upload_id}")
@@ -267,7 +396,21 @@ def get_upload_progress(upload_id: str):
 @app.post("/upload")
 async def upload_file(request: Request, file: UploadFile = File(...), filename: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None), upload_id: Optional[str] = Form(None)):
     try:
+        # Get client IP for rate limiting
+        client_ip = get_real_ip(request)
+
+        # Check concurrent upload limit per IP
+        if active_uploads[client_ip] >= MAX_CONCURRENT_UPLOADS_PER_IP:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many concurrent uploads. Maximum {MAX_CONCURRENT_UPLOADS_PER_IP} uploads allowed per IP."
+            )
+
+        # Increment active upload counter
+        active_uploads[client_ip] += 1
+
         if not file.filename:
+            active_uploads[client_ip] -= 1
             raise HTTPException(status_code=400, detail="No file selected")
 
         upload_id = upload_id or generate_code(12)
@@ -276,8 +419,16 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
         file.file.seek(0, 2)
         file_size = file.file.tell()
         file.file.seek(0)
-        if file_size > 100 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="Max file size is 100MB")
+
+        # Reduced max file size to mitigate storage exhaustion attacks
+        if file_size > 50 * 1024 * 1024:  # 50MB instead of 100MB
+            active_uploads[client_ip] -= 1
+            raise HTTPException(status_code=400, detail="Max file size is 50MB")
+
+        # Reject empty files
+        if file_size == 0:
+            active_uploads[client_ip] -= 1
+            raise HTTPException(status_code=400, detail="Empty files are not allowed")
 
         upload_progress[upload_id]["total"] = file_size
         upload_progress[upload_id]["status"] = "uploading"
@@ -329,6 +480,12 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
         asyncio.create_task(cleanup_progress(upload_id))
 
         url = f"https://nauval.cloud/download/{final_name}"
+
+        # Decrement active upload counter
+        active_uploads[client_ip] = max(0, active_uploads[client_ip] - 1)
+        if active_uploads[client_ip] == 0:
+            active_uploads.pop(client_ip, None)
+
         return {
             "file_url": url,
             "expires_at": expires_at.isoformat() if expires_at else None,
@@ -340,7 +497,13 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
             "upload_id": upload_id
         }
     except Exception as e:
-        upload_progress[upload_id]["status"] = "error"
+        # Decrement active upload counter on error
+        active_uploads[client_ip] = max(0, active_uploads[client_ip] - 1)
+        if active_uploads[client_ip] == 0:
+            active_uploads.pop(client_ip, None)
+
+        if 'upload_id' in locals():
+            upload_progress[upload_id]["status"] = "error"
         logger.error(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
@@ -371,6 +534,7 @@ def download_file(filename: str):
 
 @app.post("/upload/html")
 async def upload_html_page(
+    request: Request,
     file: UploadFile = File(...),
     code: str = Form(...),
     expire_days: int = Form(...)
@@ -378,8 +542,9 @@ async def upload_html_page(
     if not file.filename.endswith(".html"):
         raise HTTPException(status_code=400, detail="Only .html files allowed")
 
-    if not code.isalnum():
-        raise HTTPException(status_code=400, detail="Code must be alphanumeric")
+    # Stricter code validation to prevent path traversal
+    if not code.isalnum() or len(code) < 3 or len(code) > 20:
+        raise HTTPException(status_code=400, detail="Code must be alphanumeric and 3-20 characters")
 
     if code in html_pages:
         raise HTTPException(status_code=400, detail="Code already used")
@@ -387,11 +552,19 @@ async def upload_html_page(
     if expire_days > 7 or expire_days < 1:
         raise HTTPException(status_code=400, detail="Expire must be between 1 and 7 days")
 
+    # Check file size to prevent abuse
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:  # 5MB max for HTML
+        raise HTTPException(status_code=400, detail="HTML file too large (max 5MB)")
+
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="Empty file not allowed")
+
     filename = f"{code}.html"
     filepath = os.path.join(HTML_STORAGE_DIR, filename)
 
+    # Write the content we already read
     with open(filepath, "wb") as f:
-        content = await file.read()
         f.write(content)
 
     expires_at = datetime.utcnow() + timedelta(days=expire_days)
