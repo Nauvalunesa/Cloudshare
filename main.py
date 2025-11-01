@@ -314,6 +314,17 @@ def index():
         logger.error(f"Error reading index.html: {str(e)}")
         return HTMLResponse("<h1>Error</h1><p>Could not load the page.</p>")
 
+@app.get("/advanced.html", response_class=HTMLResponse)
+def advanced():
+    try:
+        with open("advanced.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="advanced.html not found")
+    except Exception as e:
+        logger.error(f"Error reading advanced.html: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not load the page")
+
 @app.post("/shorten")
 def shorten_url(original_url: str = Form(...), custom_alias: Optional[str] = Form(None), expires_in_minutes: Optional[int] = Form(None)):
     try:
