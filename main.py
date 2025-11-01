@@ -602,6 +602,132 @@ def view_uploaded_html_page(code: str):
 
     return FileResponse(filepath, media_type="text/html")
 
+# Text Snippets Storage
+SNIPPETS_FILE = "snippets.json"
+text_snippets = {}
+
+def save_snippets():
+    serializable = {
+        k: {
+            **v,
+            "created_at": v["created_at"].isoformat(),
+            "expires_at": v["expires_at"].isoformat() if v["expires_at"] else None
+        } for k, v in text_snippets.items()
+    }
+    with open(SNIPPETS_FILE, "w") as f:
+        json.dump(serializable, f, indent=2)
+
+def load_snippets():
+    if os.path.exists(SNIPPETS_FILE):
+        with open(SNIPPETS_FILE, "r") as f:
+            data = json.load(f)
+            for code, meta in data.items():
+                meta["created_at"] = datetime.fromisoformat(meta["created_at"])
+                meta["expires_at"] = datetime.fromisoformat(meta["expires_at"]) if meta["expires_at"] else None
+                text_snippets[code] = meta
+
+# Load snippets on startup
+load_snippets()
+
+@app.post("/snippet")
+async def create_snippet(
+    code: str = Form(...),
+    content: str = Form(...),
+    language: str = Form("text"),
+    expire_value: Optional[int] = Form(None),
+    expire_unit: Optional[str] = Form(None),
+    password: Optional[str] = Form(None)
+):
+    """Create a text/code snippet"""
+    try:
+        # Validate code
+        if not code.replace('-', '').replace('_', '').isalnum() or len(code) < 3 or len(code) > 30:
+            raise HTTPException(status_code=400, detail="Code must be alphanumeric (3-30 chars)")
+
+        if code in text_snippets:
+            raise HTTPException(status_code=400, detail="Code already exists")
+
+        # Validate content size
+        if len(content) > 1 * 1024 * 1024:  # 1MB max
+            raise HTTPException(status_code=400, detail="Content too large (max 1MB)")
+
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="Content cannot be empty")
+
+        # Calculate expiry
+        expires_at = calculate_expiry(expire_value, expire_unit)
+
+        # Store snippet
+        text_snippets[code] = {
+            "content": content,
+            "language": language,
+            "password": password,
+            "created_at": datetime.utcnow(),
+            "expires_at": expires_at
+        }
+        save_snippets()
+
+        snippet_url = f"/snippet/{code}"
+        return {
+            "success": True,
+            "url": snippet_url,
+            "code": code,
+            "expires_at": expires_at.isoformat() if expires_at else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating snippet: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/snippet/{code}", response_class=HTMLResponse)
+async def view_snippet_page(code: str, request: Request):
+    """Serve snippet viewer HTML page"""
+    return FileResponse("snippet_viewer.html")
+
+@app.get("/api/snippet/{code}")
+async def view_snippet(code: str, password: Optional[str] = None):
+    """View a text snippet (API endpoint)"""
+    snippet = text_snippets.get(code)
+    if not snippet:
+        raise HTTPException(status_code=404, detail="Snippet not found")
+
+    # Check expiry
+    if snippet["expires_at"] and datetime.utcnow() > snippet["expires_at"]:
+        del text_snippets[code]
+        save_snippets()
+        raise HTTPException(status_code=410, detail="Snippet expired")
+
+    # Check password
+    if snippet.get("password"):
+        if not password or password != snippet["password"]:
+            raise HTTPException(status_code=401, detail="Password required")
+
+    return {
+        "content": snippet["content"],
+        "language": snippet["language"],
+        "created_at": snippet["created_at"].isoformat(),
+        "expires_at": snippet["expires_at"].isoformat() if snippet["expires_at"] else None
+    }
+
+@app.get("/snippet/{code}/raw")
+async def view_snippet_raw(code: str, password: Optional[str] = None):
+    """View raw snippet content"""
+    snippet = text_snippets.get(code)
+    if not snippet:
+        raise HTTPException(status_code=404, detail="Snippet not found")
+
+    if snippet["expires_at"] and datetime.utcnow() > snippet["expires_at"]:
+        del text_snippets[code]
+        save_snippets()
+        raise HTTPException(status_code=410, detail="Snippet expired")
+
+    if snippet.get("password"):
+        if not password or password != snippet["password"]:
+            raise HTTPException(status_code=401, detail="Password required")
+
+    return HTMLResponse(content=snippet["content"], media_type="text/plain")
+
 @app.get("/stats")
 def get_stats():
     try:
@@ -609,6 +735,7 @@ def get_stats():
             "total_urls": len(short_urls),
             "total_files": len(uploaded_files),
             "total_html_pages": len(html_pages),
+            "total_snippets": len(text_snippets),
             "storage_dir": STORAGE_DIR,
             "html_dir": HTML_STORAGE_DIR
         }

@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Features - LinkShare Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        /* Inherit styles from main index */
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --gradient-cosmic: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+
+            --shadow: 0 4px 6px -1px var(--shadow-color);
+            --shadow-lg: 0 10px 25px -3px var(--shadow-color);
+            --shadow-xl: 0 25px 50px -12px var(--shadow-color);
+
+            --radius: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: rgba(30, 41, 59, 0.9);
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            opacity: 0.05;
+        }
+
+        [data-theme="dark"] .animated-bg {
+            opacity: 0.1;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .header {
+            background: var(--gradient-cosmic);
+            padding: 2rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            letter-spacing: -0.03em;
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.95);
+            font-weight: 400;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 1.5rem;
+            left: 1.5rem;
+            z-index: 1000;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            color: var(--text-primary);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1) rotate(15deg);
+        }
+
+        .main {
+            padding: 3rem 0;
+            position: relative;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .service-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-cosmic);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .service-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .service-card:hover::before {
+            opacity: 1;
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 1rem;
+        }
+
+        .service-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-cosmic);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.75rem;
+            box-shadow: var(--shadow);
+        }
+
+        .service-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .form-label i {
+            margin-right: 0.5rem;
+            color: var(--primary);
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .btn {
+            background: var(--gradient-cosmic);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            font-family: inherit;
+            box-shadow: var(--shadow);
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+
+        .btn-sm {
+            padding: 0.625rem 1.25rem;
+            font-size: 0.9rem;
+        }
+
+        .result {
+            margin-top: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+            border: 2px solid var(--success);
+            border-radius: var(--radius-lg);
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .result-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--success);
+            flex: 1;
+        }
+
+        .result-url {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .result-link {
+            flex: 1;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            min-width: 200px;
+        }
+
+        .copy-btn {
+            padding: 1rem 1.5rem;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            margin-top: 1rem;
+            padding: 1rem 1.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid var(--error);
+            border-radius: var(--radius-lg);
+            color: var(--error);
+            display: none;
+            font-weight: 500;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Code preview */
+        .code-preview {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #2d2d2d;
+            border-radius: var(--radius);
+            overflow-x: auto;
+            max-height: 400px;
+        }
+
+        .code-preview pre {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        /* Bulk shortener */
+        .url-list-container {
+            margin-top: 1.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            background: var(--bg-primary);
+        }
+
+        .url-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            margin-bottom: 0.5rem;
+        }
+
+        .url-item-status {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .url-item-status.pending {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+
+        .url-item-status.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .url-item-status.error {
+            background: var(--error);
+            color: white;
+        }
+
+        .url-item-text {
+            flex: 1;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @media (min-width: 768px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .result-url {
+                flex-wrap: nowrap;
+            }
+
+            .btn {
+                width: auto;
+                min-width: 180px;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gradient-cosmic);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg"></div>
+
+    <a href="/" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back to Home</span>
+    </a>
+
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <i class="fas fa-moon" id="theme-icon"></i>
+    </button>
+
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <i class="fas fa-bolt"></i>
+                Advanced Features
+            </h1>
+            <p class="tagline">
+                🚀 Powerful Tools for Power Users - Code Snippets, Bulk Operations & More
+            </p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="features-grid">
+                <!-- Code Snippet Sharing -->
+                <div class="service-card" style="grid-column: 1 / -1;">
+                    <div class="service-header">
+                        <div class="service-icon">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <h2 class="service-title">Code Snippet Sharing 📝</h2>
+                    </div>
+
+                    <form id="snippet-form" onsubmit="createSnippet(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="snippet_code" class="form-label">
+                                    <i class="fas fa-tag"></i>
+                                    Custom Code (URL) <span style="color: var(--error);">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="snippet_code"
+                                    class="form-input"
+                                    placeholder="my-code-snippet"
+                                    pattern="[a-zA-Z0-9-_]+"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="snippet_language" class="form-label">
+                                    <i class="fas fa-file-code"></i>
+                                    Language
+                                </label>
+                                <select id="snippet_language" class="form-select">
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="python">Python</option>
+                                    <option value="java">Java</option>
+                                    <option value="csharp">C#</option>
+                                    <option value="cpp">C++</option>
+                                    <option value="php">PHP</option>
+                                    <option value="ruby">Ruby</option>
+                                    <option value="go">Go</option>
+                                    <option value="rust">Rust</option>
+                                    <option value="typescript">TypeScript</option>
+                                    <option value="html">HTML</option>
+                                    <option value="css">CSS</option>
+                                    <option value="sql">SQL</option>
+                                    <option value="bash">Bash</option>
+                                    <option value="json">JSON</option>
+                                    <option value="yaml">YAML</option>
+                                    <option value="markdown">Markdown</option>
+                                    <option value="text">Plain Text</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="snippet_content" class="form-label">
+                                <i class="fas fa-align-left"></i>
+                                Code Content <span style="color: var(--error);">*</span>
+                            </label>
+                            <textarea
+                                id="snippet_content"
+                                class="form-textarea"
+                                placeholder="// Paste your code here...&#10;function hello() {&#10;    console.log('Hello World!');&#10;}"
+                                required
+                            ></textarea>
+                            <div class="char-count">
+                                <span id="char-count">0</span> / 1,048,576 characters
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="snippet_expire_value" class="form-label">
+                                    <i class="fas fa-clock"></i>
+                                    Expire After
+                                </label>
+                                <input
+                                    type="number"
+                                    id="snippet_expire_value"
+                                    class="form-input"
+                                    placeholder="24"
+                                    min="1"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="snippet_expire_unit" class="form-label">
+                                    <i class="fas fa-calendar"></i>
+                                    Time Unit
+                                </label>
+                                <select id="snippet_expire_unit" class="form-select">
+                                    <option value="">No expiration</option>
+                                    <option value="minutes">Minutes</option>
+                                    <option value="hours">Hours</option>
+                                    <option value="days">Days</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="snippet_password" class="form-label">
+                                <i class="fas fa-lock"></i>
+                                Password Protection (Optional)
+                            </label>
+                            <input
+                                type="password"
+                                id="snippet_password"
+                                class="form-input"
+                                placeholder="Leave empty for public access"
+                            >
+                        </div>
+
+                        <button type="submit" class="btn" id="snippet-submit-btn">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Share Code Snippet</span>
+                        </button>
+                    </form>
+
+                    <div id="snippet-result" class="result">
+                        <div class="result-header">
+                            <div class="result-icon">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="result-title">Snippet Created Successfully! 🎉</div>
+                        </div>
+
+                        <div class="result-url">
+                            <input type="text" id="snippet-url" class="result-link" readonly>
+                            <button class="copy-btn" onclick="copyToClipboard('snippet-url')">
+                                <i class="fas fa-copy"></i>
+                                Copy
+                            </button>
+                        </div>
+
+                        <div id="snippet-expires" style="margin: 1rem 0; color: var(--text-secondary);"></div>
+
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-secondary" onclick="openSnippet()" style="width: 100%;">
+                                <i class="fas fa-external-link-alt"></i>
+                                View Snippet
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="snippet-error" class="error-message"></div>
+                </div>
+
+                <!-- Bulk URL Shortener -->
+                <div class="service-card" style="grid-column: 1 / -1;">
+                    <div class="service-header">
+                        <div class="service-icon">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <h2 class="service-title">Bulk URL Shortener ⚡</h2>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bulk_urls" class="form-label">
+                            <i class="fas fa-list"></i>
+                            URLs (One per line) <span style="color: var(--error);">*</span>
+                        </label>
+                        <textarea
+                            id="bulk_urls"
+                            class="form-textarea"
+                            placeholder="https://example.com/url1&#10;https://example.com/url2&#10;https://example.com/url3"
+                            style="min-height: 150px;"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="bulk_expire_minutes" class="form-label">
+                                <i class="fas fa-clock"></i>
+                                Expire Minutes <span style="color: var(--error);">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="bulk_expire_minutes"
+                                class="form-input"
+                                placeholder="60"
+                                min="1"
+                                value="60"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group" style="display: flex; align-items: flex-end;">
+                            <button class="btn" onclick="processBulkUrls()" id="bulk-process-btn" style="width: 100%;">
+                                <i class="fas fa-rocket"></i>
+                                <span>Process All URLs</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="bulk-progress" style="display: none;">
+                        <div class="url-list-container" id="bulk-results-container">
+                            <!-- Results will be added here dynamically -->
+                        </div>
+
+                        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="downloadBulkResults()" style="flex: 1;">
+                                <i class="fas fa-download"></i>
+                                <span>Download Results</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="copyAllBulkUrls()" style="flex: 1;">
+                                <i class="fas fa-copy"></i>
+                                <span>Copy All URLs</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="bulk-error" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+
+    <script>
+        let createdSnippetUrl = '';
+        let bulkResults = [];
+
+        // Theme toggle
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                document.getElementById('theme-icon').className = 'fas fa-sun';
+            }
+        });
+
+        // Character counter for snippet
+        document.getElementById('snippet_content').addEventListener('input', function() {
+            document.getElementById('char-count').textContent = this.value.length.toLocaleString();
+        });
+
+        // Create snippet
+        async function createSnippet(event) {
+            event.preventDefault();
+
+            const submitBtn = document.getElementById('snippet-submit-btn');
+            const errorDiv = document.getElementById('snippet-error');
+            const resultDiv = document.getElementById('snippet-result');
+
+            errorDiv.classList.remove('show');
+            resultDiv.classList.remove('show');
+
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Creating...</span>';
+            submitBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('code', document.getElementById('snippet_code').value);
+            formData.append('content', document.getElementById('snippet_content').value);
+            formData.append('language', document.getElementById('snippet_language').value);
+
+            const expireValue = document.getElementById('snippet_expire_value').value;
+            const expireUnit = document.getElementById('snippet_expire_unit').value;
+            if (expireValue && expireUnit) {
+                formData.append('expire_value', expireValue);
+                formData.append('expire_unit', expireUnit);
+            }
+
+            const password = document.getElementById('snippet_password').value;
+            if (password) {
+                formData.append('password', password);
+            }
+
+            try {
+                const response = await fetch('/snippet', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const snippetUrl = `${window.location.origin}${data.url}`;
+                    createdSnippetUrl = snippetUrl;
+
+                    document.getElementById('snippet-url').value = snippetUrl;
+                    document.getElementById('snippet-expires').textContent = data.expires_at
+                        ? `⏰ Expires: ${new Date(data.expires_at).toLocaleString()}`
+                        : 'No expiration';
+
+                    resultDiv.classList.add('show');
+                    document.getElementById('snippet-form').reset();
+                    document.getElementById('char-count').textContent = '0';
+                } else {
+                    showError('snippet-error', data.detail || 'Error creating snippet');
+                }
+            } catch (error) {
+                showError('snippet-error', 'Network error: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = '<i class="fas fa-share-alt"></i><span>Share Code Snippet</span>';
+                submitBtn.disabled = false;
+            }
+        }
+
+        function openSnippet() {
+            if (createdSnippetUrl) {
+                window.open(createdSnippetUrl, '_blank');
+            }
+        }
+
+        // Bulk URL processing
+        async function processBulkUrls() {
+            const textarea = document.getElementById('bulk_urls');
+            const expireMinutes = document.getElementById('bulk_expire_minutes').value;
+            const errorDiv = document.getElementById('bulk-error');
+            const progressDiv = document.getElementById('bulk-progress');
+            const resultsContainer = document.getElementById('bulk-results-container');
+            const processBtn = document.getElementById('bulk-process-btn');
+
+            const urls = textarea.value.trim().split('\n').filter(url => url.trim());
+
+            if (urls.length === 0) {
+                showError('bulk-error', 'Please enter at least one URL');
+                return;
+            }
+
+            if (!expireMinutes || expireMinutes < 1) {
+                showError('bulk-error', 'Please enter valid expiration time');
+                return;
+            }
+
+            errorDiv.classList.remove('show');
+            progressDiv.style.display = 'block';
+            resultsContainer.innerHTML = '';
+            bulkResults = [];
+
+            processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Processing...</span>';
+            processBtn.disabled = true;
+
+            for (let i = 0; i < urls.length; i++) {
+                const url = urls[i].trim();
+
+                // Add pending item
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'url-item';
+                itemDiv.id = `bulk-item-${i}`;
+                itemDiv.innerHTML = `
+                    <div class="url-item-status pending">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="url-item-text">${url}</div>
+                `;
+                resultsContainer.appendChild(itemDiv);
+
+                try {
+                    const formData = new FormData();
+                    formData.append('original_url', url);
+                    formData.append('expires_in_minutes', expireMinutes);
+
+                    const response = await fetch('/shorten', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        itemDiv.innerHTML = `
+                            <div class="url-item-status success">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="url-item-text" style="flex: 0.8;">${url}</div>
+                            <div class="url-item-text" style="flex: 1.2; font-weight: 600; color: var(--success);">
+                                ${data.short_url}
+                            </div>
+                            <button class="btn-secondary btn-sm" onclick="copyText('${data.short_url}')" style="flex-shrink: 0;">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        `;
+                        bulkResults.push({ original: url, short: data.short_url, status: 'success' });
+                    } else {
+                        itemDiv.innerHTML = `
+                            <div class="url-item-status error">
+                                <i class="fas fa-times"></i>
+                            </div>
+                            <div class="url-item-text">${url}</div>
+                            <div class="url-item-text" style="color: var(--error); font-size: 0.85rem;">
+                                ${data.detail || 'Error'}
+                            </div>
+                        `;
+                        bulkResults.push({ original: url, short: null, status: 'error', error: data.detail });
+                    }
+                } catch (error) {
+                    itemDiv.innerHTML = `
+                        <div class="url-item-status error">
+                            <i class="fas fa-times"></i>
+                        </div>
+                        <div class="url-item-text">${url}</div>
+                        <div class="url-item-text" style="color: var(--error); font-size: 0.85rem;">
+                            Network error
+                        </div>
+                    `;
+                    bulkResults.push({ original: url, short: null, status: 'error', error: 'Network error' });
+                }
+
+                // Small delay to prevent overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            processBtn.innerHTML = '<i class="fas fa-rocket"></i><span>Process All URLs</span>';
+            processBtn.disabled = false;
+        }
+
+        function downloadBulkResults() {
+            let csv = 'Original URL,Short URL,Status\n';
+            bulkResults.forEach(result => {
+                csv += `"${result.original}","${result.short || 'N/A'}","${result.status}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bulk-shortened-urls-${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function copyAllBulkUrls() {
+            const successUrls = bulkResults
+                .filter(r => r.status === 'success')
+                .map(r => r.short)
+                .join('\n');
+
+            copyText(successUrls);
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary feedback
+                const btn = event.target.closest('button');
+                if (btn) {
+                    const original = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    btn.style.background = 'var(--success)';
+                    setTimeout(() => {
+                        btn.innerHTML = original;
+                        btn.style.background = '';
+                    }, 1500);
+                }
+            });
+        }
+
+        async function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const copyBtn = element.nextElementSibling;
+
+            try {
+                await navigator.clipboard.writeText(element.value);
+
+                const originalContent = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                copyBtn.style.background = '#10b981';
+
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalContent;
+                    copyBtn.style.background = '';
+                }, 2000);
+            } catch (error) {
+                element.select();
+                document.execCommand('copy');
+            }
+        }
+
+        function showError(elementId, message) {
+            const errorDiv = document.getElementById(elementId);
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 10000);
+        }
+    </script>
+</body>
+</html>

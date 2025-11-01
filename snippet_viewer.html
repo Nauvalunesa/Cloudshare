@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Snippet - LinkShare Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .meta {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .password-form {
+            max-width: 400px;
+            margin: 3rem auto;
+            text-align: center;
+        }
+
+        .password-form input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .password-form button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .password-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .code-container {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .code-header {
+            background: #2d2d2d;
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .language-badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .code-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .code-actions button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-actions button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        pre[class*="language-"] {
+            margin: 0;
+            border-radius: 0;
+            max-height: 600px;
+            overflow: auto;
+        }
+
+        .error-box {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #dc2626;
+        }
+
+        .error-box i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-box h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer {
+            padding: 1.5rem 2rem;
+            background: #f8fafc;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #64748b;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header .meta {
+                font-size: 0.85rem;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <i class="fas fa-code"></i>
+                Code Snippet
+            </h1>
+            <div class="meta">
+                <div class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    <span id="created-date">Loading...</span>
+                </div>
+                <div class="meta-item" id="expires-meta">
+                    <i class="fas fa-clock"></i>
+                    <span id="expires-date">Never</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div id="loading" class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>Loading snippet...</p>
+            </div>
+
+            <div id="password-prompt" style="display: none;">
+                <div class="password-form">
+                    <i class="fas fa-lock" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                    <h2 style="margin-bottom: 1rem; color: #1e293b;">Password Protected</h2>
+                    <p style="color: #64748b; margin-bottom: 1.5rem;">This snippet is protected. Please enter the password to view it.</p>
+                    <input type="password" id="password-input" placeholder="Enter password" />
+                    <button onclick="loadSnippet()">
+                        <i class="fas fa-unlock"></i>
+                        Unlock Snippet
+                    </button>
+                    <div id="password-error" style="color: #dc2626; margin-top: 1rem; display: none;"></div>
+                </div>
+            </div>
+
+            <div id="snippet-content" style="display: none;">
+                <div class="code-container">
+                    <div class="code-header">
+                        <div class="language-badge" id="language-badge">TEXT</div>
+                        <div class="code-actions">
+                            <button onclick="copyCode()">
+                                <i class="fas fa-copy"></i>
+                                <span id="copy-text">Copy</span>
+                            </button>
+                            <button onclick="downloadCode()">
+                                <i class="fas fa-download"></i>
+                                Download
+                            </button>
+                            <button onclick="viewRaw()">
+                                <i class="fas fa-file-code"></i>
+                                Raw
+                            </button>
+                        </div>
+                    </div>
+                    <pre id="code-block"><code id="code-content" class="language-javascript"></code></pre>
+                </div>
+            </div>
+
+            <div id="error-content" style="display: none;">
+                <div class="error-box">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h2>Snippet Not Found</h2>
+                    <p id="error-message">The snippet you're looking for doesn't exist or has expired.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Powered by <a href="/">LinkShare Pro</a> - Share code snippets securely
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+
+    <script>
+        let snippetCode = '';
+        let snippetLanguage = 'text';
+        let snippetContent = '';
+        let passwordRequired = false;
+
+        // Get snippet code from URL
+        const pathParts = window.location.pathname.split('/');
+        snippetCode = pathParts[pathParts.length - 1];
+
+        async function loadSnippet() {
+            const loading = document.getElementById('loading');
+            const passwordPrompt = document.getElementById('password-prompt');
+            const content = document.getElementById('snippet-content');
+            const error = document.getElementById('error-content');
+            const passwordError = document.getElementById('password-error');
+
+            // Hide all sections
+            loading.style.display = 'none';
+            passwordPrompt.style.display = 'none';
+            content.style.display = 'none';
+            error.style.display = 'none';
+            passwordError.style.display = 'none';
+
+            // Show loading
+            loading.style.display = 'block';
+
+            try {
+                let url = `/api/snippet/${snippetCode}`;
+                const password = document.getElementById('password-input')?.value;
+                if (password) {
+                    url += `?password=${encodeURIComponent(password)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.status === 401) {
+                    // Password required
+                    loading.style.display = 'none';
+                    passwordPrompt.style.display = 'block';
+                    passwordRequired = true;
+
+                    if (password) {
+                        // Wrong password
+                        passwordError.textContent = 'Incorrect password. Please try again.';
+                        passwordError.style.display = 'block';
+                    }
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load snippet');
+                }
+
+                // Display snippet
+                snippetContent = data.content;
+                snippetLanguage = data.language || 'text';
+
+                document.getElementById('created-date').textContent = new Date(data.created_at).toLocaleString();
+
+                if (data.expires_at) {
+                    document.getElementById('expires-date').textContent = new Date(data.expires_at).toLocaleString();
+                } else {
+                    document.getElementById('expires-meta').style.display = 'none';
+                }
+
+                document.getElementById('language-badge').textContent = snippetLanguage.toUpperCase();
+                const codeElement = document.getElementById('code-content');
+                codeElement.className = `language-${snippetLanguage}`;
+                codeElement.textContent = snippetContent;
+
+                Prism.highlightElement(codeElement);
+
+                loading.style.display = 'none';
+                content.style.display = 'block';
+
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                document.getElementById('error-message').textContent = err.message;
+            }
+        }
+
+        function copyCode() {
+            navigator.clipboard.writeText(snippetContent).then(() => {
+                const copyText = document.getElementById('copy-text');
+                copyText.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyText.textContent = 'Copy';
+                }, 2000);
+            });
+        }
+
+        function downloadCode() {
+            const blob = new Blob([snippetContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `snippet-${snippetCode}.${snippetLanguage}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function viewRaw() {
+            window.open(`/snippet/${snippetCode}/raw`, '_blank');
+        }
+
+        // Allow Enter key in password input
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('password-input');
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        loadSnippet();
+                    }
+                });
+            }
+        });
+
+        // Load snippet on page load
+        loadSnippet();
+    </script>
+</body>
+</html>
