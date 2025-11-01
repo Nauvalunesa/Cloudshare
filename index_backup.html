@@ -890,10 +890,6 @@
                         <div class="stat-number" id="total-biolinks">0</div>
                         <div class="stat-label">Bio Links</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="total-snippets">0</div>
-                        <div class="stat-label">Code Snippets</div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1273,24 +1269,6 @@
                 </div>
             </div>
 
-            <!-- Advanced Features Promo Card -->
-            <div style="background: var(--gradient-cosmic); border-radius: var(--radius-xl); padding: 3rem 2rem; text-align: center; margin-bottom: 3rem; box-shadow: var(--shadow-xl); animation: fadeInUp 0.8s ease; position: relative; overflow: hidden;">
-                <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-                <div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-                <div style="position: relative; z-index: 1;">
-                    <h2 style="font-size: 2rem; font-weight: 800; color: white; margin-bottom: 1rem;">
-                        ⚡ Want More Power?
-                    </h2>
-                    <p style="font-size: 1.1rem; color: rgba(255,255,255,0.9); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
-                        Unlock advanced features: Code Snippet Sharing with syntax highlighting, Bulk URL Shortener, and more!
-                    </p>
-                    <a href="/advanced.html" class="btn" style="background: white; color: var(--primary); display: inline-flex; width: auto; font-size: 1.1rem; padding: 1.25rem 2.5rem;">
-                        <i class="fas fa-rocket"></i>
-                        <span>Explore Advanced Features</span>
-                    </a>
-                </div>
-            </div>
-
             <!-- Console Log -->
             <div class="console-log">
                 <div class="console-header">
@@ -1332,7 +1310,6 @@
                 animateCounter('total-urls', data.total_urls || 0);
                 animateCounter('total-files', data.total_files || 0);
                 animateCounter('total-biolinks', data.total_html_pages || 0);
-                animateCounter('total-snippets', data.total_snippets || 0);
             } catch (error) {
                 console.log('Stats update failed:', error);
             }
