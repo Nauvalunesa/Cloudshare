@@ -295,25 +295,14 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 
     <script>
+        // Configure Prism autoloader
+        if (typeof Prism !== 'undefined' && Prism.plugins && Prism.plugins.autoloader) {
+            Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+        }
+
         let snippetCode = '';
         let snippetLanguage = 'text';
         let snippetContent = '';
@@ -382,13 +371,63 @@
 
                 document.getElementById('language-badge').textContent = snippetLanguage.toUpperCase();
                 const codeElement = document.getElementById('code-content');
-                codeElement.className = `language-${snippetLanguage}`;
-                codeElement.textContent = snippetContent;
+                const codeBlock = document.getElementById('code-block');
 
-                Prism.highlightElement(codeElement);
+                // Map language to Prism class
+                const languageMap = {
+                    'javascript': 'javascript',
+                    'python': 'python',
+                    'java': 'java',
+                    'csharp': 'csharp',
+                    'cpp': 'cpp',
+                    'php': 'php',
+                    'ruby': 'ruby',
+                    'go': 'go',
+                    'rust': 'rust',
+                    'typescript': 'typescript',
+                    'html': 'markup',
+                    'css': 'css',
+                    'sql': 'sql',
+                    'bash': 'bash',
+                    'json': 'json',
+                    'yaml': 'yaml',
+                    'markdown': 'markdown',
+                    'text': 'none'
+                };
+
+                const prismLang = languageMap[snippetLanguage] || 'none';
+
+                // Set content first
+                codeElement.textContent = snippetContent;
 
                 loading.style.display = 'none';
                 content.style.display = 'block';
+
+                // Apply syntax highlighting if not plain text
+                if (prismLang !== 'none' && typeof Prism !== 'undefined') {
+                    codeElement.className = `language-${prismLang}`;
+                    codeBlock.className = `language-${prismLang}`;
+
+                    // Use requestAnimationFrame to ensure DOM is ready
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            try {
+                                if (Prism.highlightElement) {
+                                    Prism.highlightElement(codeElement);
+                                } else if (Prism.highlightAll) {
+                                    Prism.highlightAll();
+                                }
+                            } catch (e) {
+                                console.warn('Syntax highlighting failed, showing plain text:', e);
+                                // Keep as plain text if highlighting fails
+                            }
+                        }, 200);
+                    });
+                } else {
+                    // Plain text display
+                    codeElement.className = '';
+                    codeBlock.className = '';
+                }
 
             } catch (err) {
                 loading.style.display = 'none';
