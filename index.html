@@ -4,56 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-adsense-account" content="ca-pub-9907637624928035">
-    <title>LinkShare Pro - Modern URL Shortener & File Sharing</title>
+    <title>LinkShare Pro - Modern URL Shortener, File Sharing & Bio Links</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         /* ===== CSS VARIABLES ===== */
         :root {
-            --primary: #667eea;
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary: #f093fb;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #8b5cf6;
             --success: #10b981;
             --warning: #f59e0b;
             --error: #ef4444;
-            
+
+            /* Gradients */
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --gradient-cosmic: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+
             /* Light Theme */
             --bg-primary: #ffffff;
             --bg-secondary: #f8fafc;
-            --bg-card: #ffffff;
-            --text-primary: #1a202c;
-            --text-secondary: #718096;
-            --text-muted: #a0aec0;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
             --border: #e2e8f0;
-            --input-bg: #ffffff;
-            --input-text: #1a202c;
-            --input-border: #e2e8f0;
-            --input-focus: #667eea;
-            
+            --shadow-color: rgba(0, 0, 0, 0.1);
+
             /* Shadows */
-            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            
+            --shadow-sm: 0 2px 4px var(--shadow-color);
+            --shadow: 0 4px 6px -1px var(--shadow-color);
+            --shadow-lg: 0 10px 25px -3px var(--shadow-color);
+            --shadow-xl: 0 25px 50px -12px var(--shadow-color);
+
             /* Border Radius */
             --radius: 12px;
-            --radius-lg: 16px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
         }
 
         /* Dark Theme */
         [data-theme="dark"] {
-            --bg-primary: #1a202c;
-            --bg-secondary: #2d3748;
-            --bg-card: #2d3748;
-            --text-primary: #f7fafc;
-            --text-secondary: #e2e8f0;
-            --text-muted: #a0aec0;
-            --border: #4a5568;
-            --input-bg: #2d3748;
-            --input-text: #f7fafc;
-            --input-border: #4a5568;
-            --input-focus: #667eea;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: rgba(30, 41, 59, 0.9);
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
         }
 
         /* ===== RESET & BASE ===== */
@@ -68,33 +70,70 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-secondary);
             color: var(--text-primary);
             line-height: 1.6;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow-x: hidden;
             min-height: 100vh;
+            position: relative;
+        }
+
+        /* ===== ANIMATED BACKGROUND ===== */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            opacity: 0.05;
+        }
+
+        [data-theme="dark"] .animated-bg {
+            opacity: 0.1;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Floating particles */
+        .particle {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.6;
+            animation: float 20s infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); }
+            25% { transform: translateY(-100px) translateX(100px) rotate(90deg); }
+            50% { transform: translateY(-200px) translateX(0) rotate(180deg); }
+            75% { transform: translateY(-100px) translateX(-100px) rotate(270deg); }
         }
 
         .container {
             width: 100%;
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 1rem;
+            padding: 0 1.5rem;
         }
 
         /* ===== HEADER ===== */
         .header {
-            background: var(--primary-gradient);
-            padding: 2rem 0;
+            background: var(--gradient-cosmic);
+            padding: 3rem 0 4rem 0;
             text-align: center;
             position: relative;
             overflow: hidden;
-            min-height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            box-shadow: var(--shadow-xl);
         }
 
         .header::before {
@@ -104,83 +143,153 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>') repeat;
+            animation: sparkle 20s linear infinite;
+        }
+
+        @keyframes sparkle {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-100px); }
         }
 
         .header-content {
             position: relative;
             z-index: 1;
-            width: 100%;
         }
 
         .logo {
-            font-size: 2.5rem;
-            font-weight: 800;
+            font-size: 3.5rem;
+            font-weight: 900;
             color: white;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            letter-spacing: -0.03em;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        .logo i {
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s ease-in-out infinite;
+        }
+
+        @keyframes shine {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
         }
 
         .tagline {
-            font-size: 1.1rem;
-            color: rgba(255,255,255,0.9);
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.95);
             font-weight: 400;
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 700px;
+            margin: 0 auto 2rem auto;
+            animation: fadeInUp 0.8s ease 0.2s backwards;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+            animation: fadeInUp 0.8s ease 0.4s backwards;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.85);
+            margin-top: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* ===== THEME TOGGLE ===== */
         .theme-toggle {
             position: fixed;
-            top: 1rem;
-            right: 1rem;
+            top: 1.5rem;
+            right: 1.5rem;
             z-index: 1000;
             background: var(--bg-card);
+            backdrop-filter: blur(10px);
             border: 2px solid var(--border);
             border-radius: 50%;
-            width: 48px;
-            height: 48px;
+            width: 56px;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: var(--shadow-lg);
-            backdrop-filter: blur(10px);
             color: var(--text-primary);
         }
 
         .theme-toggle:hover {
-            transform: scale(1.1);
+            transform: scale(1.1) rotate(15deg);
             box-shadow: var(--shadow-xl);
         }
 
         /* ===== MAIN CONTENT ===== */
         .main {
-            padding: 2rem 0;
-            min-height: calc(100vh - 200px);
+            padding: 3rem 0;
+            position: relative;
         }
 
         .services-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 2rem;
-            margin-bottom: 2rem;
-            width: 100%;
+            margin-bottom: 3rem;
         }
 
-        /* ===== SERVICE CARDS ===== */
+        /* ===== SERVICE CARDS (Glass Morphism) ===== */
         .service-card {
             background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-lg);
             border: 1px solid var(--border);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
-            width: 100%;
+            animation: fadeInUp 0.6s ease;
         }
 
         .service-card::before {
@@ -189,58 +298,70 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: var(--primary-gradient);
+            height: 5px;
+            background: var(--gradient-cosmic);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .service-card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-8px);
             box-shadow: var(--shadow-xl);
+        }
+
+        .service-card:hover::before {
+            opacity: 1;
         }
 
         .service-header {
             display: flex;
             align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
+            margin-bottom: 2rem;
             gap: 1rem;
         }
 
         .service-icon {
-            width: 48px;
-            height: 48px;
-            background: var(--primary-gradient);
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-cosmic);
             border-radius: var(--radius);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             box-shadow: var(--shadow);
-            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .service-card:hover .service-icon {
+            transform: scale(1.1) rotate(5deg);
         }
 
         .service-title {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
             color: var(--text-primary);
             letter-spacing: -0.02em;
             flex: 1;
-            min-width: 0;
         }
 
         /* ===== FORMS ===== */
         .form-group {
-            margin-bottom: 1.25rem;
-            width: 100%;
+            margin-bottom: 1.5rem;
         }
 
         .form-label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
             font-weight: 600;
             color: var(--text-primary);
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+        }
+
+        .form-label i {
+            margin-right: 0.5rem;
+            color: var(--primary);
         }
 
         .form-label .required {
@@ -248,56 +369,79 @@
             margin-left: 0.25rem;
         }
 
-        .form-input, .form-select {
+        .form-input, .form-select, .form-textarea {
             width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid var(--input-border);
+            padding: 1rem 1.25rem;
+            border: 2px solid var(--border);
             border-radius: var(--radius);
-            background: var(--input-bg);
-            color: var(--input-text);
-            font-size: 0.95rem;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: inherit;
-            box-sizing: border-box;
         }
 
-        .form-input:focus, .form-select:focus {
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
             outline: none;
-            border-color: var(--input-focus);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr;
             gap: 1rem;
-            width: 100%;
         }
 
         /* ===== BUTTONS ===== */
         .btn {
-            background: var(--primary-gradient);
+            background: var(--gradient-cosmic);
             color: white;
             border: none;
-            padding: 0.875rem 1.5rem;
+            padding: 1rem 2rem;
             border-radius: var(--radius);
-            font-size: 0.95rem;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
             text-decoration: none;
             font-family: inherit;
             box-shadow: var(--shadow);
             width: 100%;
-            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
         }
 
         .btn:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px);
             box-shadow: var(--shadow-lg);
         }
 
@@ -317,40 +461,38 @@
             border: 2px solid var(--border);
         }
 
-        .btn-secondary:hover {
-            background: var(--border);
-            box-shadow: var(--shadow);
+        .btn-secondary::before {
+            display: none;
         }
 
         .btn-sm {
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
+            padding: 0.625rem 1.25rem;
+            font-size: 0.9rem;
         }
 
         /* ===== FILE UPLOAD ===== */
         .file-upload {
             position: relative;
             display: block;
-            width: 100%;
-            padding: 2rem 1rem;
+            padding: 3rem 2rem;
             border: 3px dashed var(--border);
             border-radius: var(--radius-lg);
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             background: var(--bg-primary);
-            box-sizing: border-box;
         }
 
         .file-upload:hover {
             border-color: var(--primary);
-            background: rgba(102, 126, 234, 0.05);
+            background: rgba(99, 102, 241, 0.05);
+            transform: scale(1.02);
         }
 
         .file-upload.dragover {
             border-color: var(--primary);
-            background: rgba(102, 126, 234, 0.1);
-            transform: scale(1.01);
+            background: rgba(99, 102, 241, 0.1);
+            transform: scale(1.02);
         }
 
         .file-upload input {
@@ -363,12 +505,8 @@
             left: 0;
         }
 
-        .file-upload-content {
-            pointer-events: none;
-        }
-
         .file-upload-icon {
-            font-size: 2.5rem;
+            font-size: 3rem;
             color: var(--text-secondary);
             margin-bottom: 1rem;
             transition: all 0.3s ease;
@@ -376,68 +514,64 @@
 
         .file-upload:hover .file-upload-icon {
             color: var(--primary);
-            transform: scale(1.1);
+            transform: scale(1.2);
         }
 
         .file-upload-text {
             color: var(--text-primary);
             font-weight: 600;
+            font-size: 1.1rem;
             margin-bottom: 0.5rem;
         }
 
         .file-upload-subtext {
             color: var(--text-secondary);
-            font-size: 0.8rem;
+            font-size: 0.9rem;
         }
 
         .file-selected {
-            margin-top: 0.5rem;
-            padding: 0.5rem;
-            background: rgba(102, 126, 234, 0.1);
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(99, 102, 241, 0.1);
             border-radius: var(--radius);
-            font-size: 0.85rem;
             color: var(--primary);
-            word-break: break-word;
-            max-width: 100%;
+            font-weight: 500;
         }
 
         /* ===== PROGRESS BAR ===== */
         .progress-container {
-            margin-top: 1.25rem;
+            margin-top: 1.5rem;
             display: none;
-            width: 100%;
         }
 
         .progress-container.show {
             display: block;
-            animation: slideIn 0.3s ease;
+            animation: fadeInUp 0.3s ease;
         }
 
         .progress-bar {
             width: 100%;
-            height: 6px;
+            height: 8px;
             background: var(--border);
-            border-radius: 3px;
+            border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         .progress-fill {
             height: 100%;
-            background: var(--primary-gradient);
+            background: var(--gradient-cosmic);
             width: 0%;
             transition: width 0.3s ease;
-            border-radius: 3px;
+            border-radius: 4px;
         }
 
         .progress-info {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             color: var(--text-secondary);
-            flex-wrap: wrap;
-            gap: 0.5rem;
         }
 
         .progress-speed {
@@ -447,612 +581,286 @@
 
         /* ===== RESULTS ===== */
         .result {
-            margin-top: 1.5rem;
-            padding: 1.5rem;
-            background: rgba(16, 185, 129, 0.1);
+            margin-top: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
             border: 2px solid var(--success);
             border-radius: var(--radius-lg);
             display: none;
-            width: 100%;
-            box-sizing: border-box;
         }
 
         .result.show {
             display: block;
-            animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.5s ease;
         }
 
         .result-header {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .result-icon {
-            width: 36px;
-            height: 36px;
+            width: 42px;
+            height: 42px;
             background: var(--success);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1rem;
-            flex-shrink: 0;
+            font-size: 1.25rem;
+            animation: checkmark 0.5s ease;
+        }
+
+        @keyframes checkmark {
+            0% { transform: scale(0) rotate(-45deg); }
+            50% { transform: scale(1.2) rotate(15deg); }
+            100% { transform: scale(1) rotate(0deg); }
         }
 
         .result-title {
-            font-size: 1.1rem;
+            font-size: 1.25rem;
             font-weight: 700;
             color: var(--success);
             flex: 1;
-            min-width: 0;
         }
 
         .result-url {
             display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
+            gap: 1rem;
             margin-bottom: 1rem;
-            width: 100%;
+            align-items: center;
         }
 
         .result-link {
-            padding: 0.75rem;
-            background: var(--input-bg);
-            border: 2px solid var(--input-border);
+            flex: 1;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border: 2px solid var(--border);
             border-radius: var(--radius);
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.8rem;
-            word-break: break-all;
-            color: var(--input-text);
-            overflow-wrap: break-word;
-            width: 100%;
-            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--text-primary);
         }
 
         .copy-btn {
-            padding: 0.75rem;
+            padding: 1rem 1.5rem;
             background: var(--success);
             color: white;
             border: none;
             border-radius: var(--radius);
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 0.9rem;
-            width: 100%;
-            box-sizing: border-box;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
         .copy-btn:hover {
             background: #059669;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
 
-        .expires-info {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            background: var(--bg-primary);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            word-break: break-word;
-        }
-
-        /* ===== QR CODE SECTION ===== */
         .qr-section {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 1rem;
-            margin-top: 1rem;
-            padding: 1rem;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            padding: 1.5rem;
             background: var(--bg-primary);
             border-radius: var(--radius);
             border: 1px solid var(--border);
-            text-align: center;
-            width: 100%;
-            box-sizing: border-box;
         }
 
         .qr-code {
-            width: 100px;
-            height: 100px;
+            width: 120px;
+            height: 120px;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            flex-shrink: 0;
         }
 
-        .qr-actions {
-            width: 100%;
+        /* ===== BIO LINK BUILDER ===== */
+        .link-builder {
+            margin-top: 1.5rem;
         }
 
-        .qr-title {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
-        }
-
-        .qr-description {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            margin-bottom: 1rem;
-        }
-
-        /* ===== VIEW SECTION ===== */
-        .view-section {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 2px solid var(--border);
-            width: 100%;
-        }
-
-        .view-form {
+        .social-link-item {
             display: flex;
-            flex-direction: column;
             gap: 1rem;
-            width: 100%;
+            margin-bottom: 1rem;
+            align-items: center;
+            animation: fadeInUp 0.3s ease;
         }
 
-        .view-form .form-group {
-            flex: 1;
+        .social-icon-select {
+            width: 120px;
+        }
+
+        .remove-link-btn {
+            background: var(--error);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .remove-link-btn:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+
+        .add-link-btn {
+            margin-top: 1rem;
+            background: var(--gradient-success);
+        }
+
+        /* ===== CONSOLE LOG ===== */
+        .console-log {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            margin-top: 3rem;
+            border: 1px solid var(--border);
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .console-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .log-entry {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: var(--radius);
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            border-left: 4px solid;
+            background: var(--bg-primary);
+        }
+
+        .log-info { border-color: #3b82f6; color: #3b82f6; }
+        .log-error { border-color: var(--error); color: var(--error); }
+        .log-success { border-color: var(--success); color: var(--success); }
+
+        /* ===== WHATSAPP BUTTON ===== */
+        .whatsapp-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            text-decoration: none;
+            box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            animation: pulse 2s infinite;
+        }
+
+        .whatsapp-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 30px rgba(37, 211, 102, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3); }
+            50% { box-shadow: 0 8px 20px rgba(37, 211, 102, 0.6); }
         }
 
         /* ===== ERROR MESSAGES ===== */
         .error-message {
             margin-top: 1rem;
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             background: rgba(239, 68, 68, 0.1);
             border: 2px solid var(--error);
             border-radius: var(--radius-lg);
             color: var(--error);
             display: none;
             font-weight: 500;
-            font-size: 0.9rem;
-            word-break: break-word;
-            width: 100%;
-            box-sizing: border-box;
         }
 
         .error-message.show {
             display: block;
-            animation: slideIn 0.3s ease;
+            animation: fadeInUp 0.3s ease;
         }
 
-        /* ===== CONSOLE LOG ===== */
-        .console-log {
-            background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-top: 2rem;
-            border: 1px solid var(--border);
-            max-height: 300px;
-            overflow-y: auto;
-            box-shadow: var(--shadow);
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .console-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        .console-title {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .log-entry {
-            padding: 0.5rem 0.75rem;
-            margin-bottom: 0.5rem;
-            border-radius: var(--radius);
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.75rem;
-            border-left: 3px solid;
-            background: var(--bg-primary);
-            word-break: break-word;
-        }
-
-        .log-info {
-            border-color: #3b82f6;
-            color: #3b82f6;
-        }
-
-        .log-error {
-            border-color: var(--error);
-            color: var(--error);
-        }
-
-        .log-success {
-            border-color: var(--success);
-            color: var(--success);
-        }
-
-        /* ===== WHATSAPP BUTTON ===== */
-        .whatsapp-btn {
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            width: 56px;
-            height: 56px;
-            background: #25d366;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-            text-decoration: none;
-            box-shadow: var(--shadow-lg);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-        }
-
-        .whatsapp-btn:hover {
-            transform: scale(1.1);
-            box-shadow: var(--shadow-xl);
-        }
-
-        /* ===== ANIMATIONS ===== */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-        }
-
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
-
-        /* ===== RESPONSIVE DESIGN ===== */
-
-        /* Tablet and Desktop */
+        /* ===== RESPONSIVE ===== */
         @media (min-width: 768px) {
-            .container {
-                padding: 0 2rem;
-            }
-
-            .header {
-                padding: 3rem 0;
-            }
-
-            .logo {
-                font-size: 3rem;
-            }
-
-            .tagline {
-                font-size: 1.2rem;
-            }
-
-            .main {
-                padding: 3rem 0;
-            }
-
             .services-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 2rem;
-            }
-
-            .service-card {
-                padding: 2rem;
-            }
-
-            .service-icon {
-                width: 56px;
-                height: 56px;
-                font-size: 1.6rem;
-            }
-
-            .service-title {
-                font-size: 1.6rem;
             }
 
             .form-row {
                 grid-template-columns: 2fr 1fr;
             }
 
-            .file-upload {
-                padding: 3rem 2rem;
-            }
-
-            .file-upload-icon {
-                font-size: 3rem;
-            }
-
-            .result {
-                padding: 2rem;
-            }
-
             .result-url {
                 flex-direction: row;
-                align-items: center;
-            }
-
-            .copy-btn {
-                width: auto;
-                min-width: 120px;
             }
 
             .qr-section {
                 flex-direction: row;
-                text-align: left;
-            }
-
-            .qr-code {
-                width: 120px;
-                height: 120px;
-            }
-
-            .console-log {
-                padding: 2rem;
-                max-height: 400px;
-            }
-
-            .theme-toggle {
-                top: 2rem;
-                right: 2rem;
-                width: 56px;
-                height: 56px;
-            }
-
-            .whatsapp-btn {
-                bottom: 2rem;
-                right: 2rem;
-                width: 64px;
-                height: 64px;
-                font-size: 1.75rem;
-            }
-
-            .view-form {
-                flex-direction: row;
-                align-items: end;
             }
 
             .btn {
                 width: auto;
-                min-width: 140px;
+                min-width: 180px;
             }
         }
 
-        /* Large Desktop */
         @media (min-width: 1200px) {
             .services-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 2.5rem;
-            }
-
-            .service-card {
-                padding: 2.5rem;
-            }
-
-            .logo {
-                font-size: 3.5rem;
-            }
-
-            .tagline {
-                font-size: 1.3rem;
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        /* Mobile Specific */
-        @media (max-width: 767px) {
-            .container {
-                padding: 0 1rem;
-            }
-
-            .header {
-                padding: 2rem 0;
-                min-height: 160px;
-            }
-
-            .logo {
-                font-size: 2rem;
-            }
-
-            .tagline {
-                font-size: 1rem;
-            }
-
-            .main {
-                padding: 1.5rem 0;
-            }
-
-            .service-card {
-                padding: 1.25rem;
-            }
-
-            .service-header {
-                flex-direction: column;
-                text-align: center;
-                gap: 0.5rem;
-            }
-
-            .service-icon {
-                margin: 0;
-            }
-
-            .service-title {
-                font-size: 1.3rem;
-            }
-
-            .form-input, .form-select {
-                padding: 0.75rem;
-                font-size: 0.9rem;
-            }
-
-            .btn {
-                padding: 0.75rem 1.25rem;
-                font-size: 0.9rem;
-            }
-
-            .file-upload {
-                padding: 1.5rem 1rem;
-            }
-
-            .file-upload-icon {
-                font-size: 2rem;
-            }
-
-            .result {
-                padding: 1.25rem;
-            }
-
-            .result-header {
-                flex-direction: column;
-                text-align: center;
-                gap: 0.5rem;
-            }
-
-            .result-title {
-                font-size: 1rem;
-            }
-
-            .qr-code {
-                width: 90px;
-                height: 90px;
-            }
-
-            .console-log {
-                padding: 1.25rem;
-                max-height: 250px;
-            }
-
-            .console-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .log-entry {
-                font-size: 0.7rem;
-                padding: 0.4rem 0.6rem;
-            }
-
-            .progress-info {
-                font-size: 0.75rem;
-            }
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 10px;
         }
 
-        /* Extra Small Mobile */
-        @media (max-width: 480px) {
-            .container {
-                padding: 0 0.75rem;
-            }
-
-            .logo {
-                font-size: 1.75rem;
-            }
-
-            .tagline {
-                font-size: 0.9rem;
-            }
-
-            .service-card {
-                padding: 1rem;
-            }
-
-            .service-title {
-                font-size: 1.2rem;
-            }
-
-            .form-input, .form-select {
-                padding: 0.625rem;
-                font-size: 0.85rem;
-            }
-
-            .btn {
-                padding: 0.625rem 1rem;
-                font-size: 0.85rem;
-            }
-
-            .qr-code {
-                width: 80px;
-                height: 80px;
-            }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
         }
 
-        /* ===== ACCESSIBILITY ===== */
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
+        ::-webkit-scrollbar-thumb {
+            background: var(--gradient-cosmic);
+            border-radius: 5px;
         }
 
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* Focus styles */
-        .btn:focus,
-        .form-input:focus,
-        .form-select:focus,
-        .theme-toggle:focus {
-            outline: 3px solid var(--primary);
-            outline-offset: 2px;
-        }
-
-        /* Prevent layout shifts */
-        .services-grid > * {
-            min-height: 0;
-        }
-
-        .service-card {
-            contain: layout;
-        }
-
-        /* Ensure proper box sizing everywhere */
-        *, *::before, *::after {
-            box-sizing: border-box;
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
         }
     </style>
 </head>
 <body>
+    <!-- Animated Background -->
+    <div class="animated-bg"></div>
+
     <!-- Theme Toggle -->
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
         <i class="fas fa-moon" id="theme-icon"></i>
@@ -1063,10 +871,26 @@
         <div class="container">
             <div class="header-content">
                 <h1 class="logo">
-                    <i class="fas fa-link"></i>
+                    <i class="fas fa-rocket"></i>
                     LinkShare Pro
                 </h1>
-                <p class="tagline">Modern URL shortening, file sharing, and HTML page hosting with instant QR codes</p>
+                <p class="tagline">
+                    🚀 Modern URL Shortener, File Sharing & Bio Link Builder - All in One Platform
+                </p>
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-urls">0</div>
+                        <div class="stat-label">Short URLs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-files">0</div>
+                        <div class="stat-label">Files Shared</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-biolinks">0</div>
+                        <div class="stat-label">Bio Links</div>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -1083,23 +907,21 @@
                         </div>
                         <h2 class="service-title">URL Shortener</h2>
                     </div>
-                    
+
                     <form id="url-form" onsubmit="shortenUrl(event)">
                         <div class="form-group">
                             <label for="original_url" class="form-label">
                                 <i class="fas fa-globe"></i>
                                 Original URL <span class="required">*</span>
                             </label>
-                            <input 
-                                type="url" 
-                                id="original_url" 
-                                name="original_url" 
-                                class="form-input" 
+                            <input
+                                type="url"
+                                id="original_url"
+                                name="original_url"
+                                class="form-input"
                                 placeholder="https://example.com/very-long-url"
                                 required
-                                aria-describedby="url-help"
                             >
-                            <small id="url-help" class="sr-only">Enter the URL you want to shorten</small>
                         </div>
 
                         <div class="form-group">
@@ -1107,16 +929,14 @@
                                 <i class="fas fa-edit"></i>
                                 Custom Alias (Optional)
                             </label>
-                            <input 
-                                type="text" 
-                                id="custom_alias" 
-                                name="custom_alias" 
-                                class="form-input" 
+                            <input
+                                type="text"
+                                id="custom_alias"
+                                name="custom_alias"
+                                class="form-input"
                                 placeholder="my-custom-link"
                                 pattern="[a-zA-Z0-9-_]+"
-                                aria-describedby="alias-help"
                             >
-                            <small id="alias-help" class="sr-only">Optional custom name for your short URL</small>
                         </div>
 
                         <div class="form-group">
@@ -1124,22 +944,20 @@
                                 <i class="fas fa-clock"></i>
                                 Expires in Minutes <span class="required">*</span>
                             </label>
-                            <input 
-                                type="number" 
-                                id="expires_in_minutes" 
-                                name="expires_in_minutes" 
-                                class="form-input" 
+                            <input
+                                type="number"
+                                id="expires_in_minutes"
+                                name="expires_in_minutes"
+                                class="form-input"
                                 placeholder="60"
                                 min="1"
                                 required
-                                aria-describedby="expire-help"
                             >
-                            <small id="expire-help" class="sr-only">Required expiration time in minutes</small>
                         </div>
 
                         <button type="submit" class="btn" id="url-submit-btn">
                             <i class="fas fa-compress-alt"></i>
-                            Shorten URL
+                            <span>Shorten URL</span>
                         </button>
                     </form>
 
@@ -1148,27 +966,29 @@
                             <div class="result-icon">
                                 <i class="fas fa-check"></i>
                             </div>
-                            <div class="result-title">URL Shortened Successfully!</div>
+                            <div class="result-title">URL Shortened Successfully! 🎉</div>
                         </div>
-                        
+
                         <div class="result-url">
                             <input type="text" id="short-url" class="result-link" readonly>
-                            <button class="copy-btn" onclick="copyToClipboard('short-url')" aria-label="Copy short URL">
+                            <button class="copy-btn" onclick="copyToClipboard('short-url')">
                                 <i class="fas fa-copy"></i>
-                                Copy Link
+                                Copy
                             </button>
                         </div>
-                        
-                        <div id="url-expires" class="expires-info"></div>
-                        
-                        <div class="qr-section" id="url-qr-section">
+
+                        <div id="url-expires" style="margin: 1rem 0; color: var(--text-secondary);"></div>
+
+                        <div class="qr-section">
                             <img id="url-qr-code" class="qr-code" alt="QR Code" style="display: none;">
-                            <div class="qr-actions">
-                                <div class="qr-title">QR Code Generated</div>
-                                <div class="qr-description">Scan this QR code to access your shortened URL instantly</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; margin-bottom: 0.5rem;">QR Code Generated ✨</div>
+                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                    Scan to access your shortened URL
+                                </div>
                                 <button class="btn btn-secondary btn-sm" onclick="downloadQR('url-qr-code', 'url-qr')">
                                     <i class="fas fa-download"></i>
-                                    Download QR Code
+                                    Download QR
                                 </button>
                             </div>
                         </div>
@@ -1194,8 +1014,8 @@
                                     <div class="file-upload-icon">
                                         <i class="fas fa-cloud-upload-alt"></i>
                                     </div>
-                                    <div class="file-upload-text">Click to upload or drag and drop</div>
-                                    <div class="file-upload-subtext">Max 100MB - Any file type supported</div>
+                                    <div class="file-upload-text">Click to upload or drag & drop</div>
+                                    <div class="file-upload-subtext">Max 50MB - All file types supported</div>
                                     <div id="file-selected-name" class="file-selected" style="display: none;"></div>
                                 </div>
                             </label>
@@ -1216,15 +1036,13 @@
                                 <i class="fas fa-file-signature"></i>
                                 Custom Filename (Optional)
                             </label>
-                            <input 
-                                type="text" 
-                                id="filename" 
-                                name="filename" 
-                                class="form-input" 
+                            <input
+                                type="text"
+                                id="filename"
+                                name="filename"
+                                class="form-input"
                                 placeholder="my-document"
-                                aria-describedby="filename-help"
                             >
-                            <small id="filename-help" class="sr-only">Optional custom name for your file (without extension)</small>
                         </div>
 
                         <div class="form-row">
@@ -1233,11 +1051,11 @@
                                     <i class="fas fa-hourglass-half"></i>
                                     Expire After <span class="required">*</span>
                                 </label>
-                                <input 
-                                    type="number" 
-                                    id="expire_value" 
-                                    name="expire_value" 
-                                    class="form-input" 
+                                <input
+                                    type="number"
+                                    id="expire_value"
+                                    name="expire_value"
+                                    class="form-input"
                                     placeholder="24"
                                     min="1"
                                     required
@@ -1247,10 +1065,10 @@
                             <div class="form-group">
                                 <label for="expire_unit" class="form-label">
                                     <i class="fas fa-calendar-alt"></i>
-                                    Time Unit <span class="required">*</span>
+                                    Unit <span class="required">*</span>
                                 </label>
                                 <select id="expire_unit" name="expire_unit" class="form-select" required>
-                                    <option value="">Select time unit</option>
+                                    <option value="">Select</option>
                                     <option value="minutes">Minutes</option>
                                     <option value="hours">Hours</option>
                                     <option value="days">Days</option>
@@ -1260,7 +1078,7 @@
 
                         <button type="submit" class="btn" id="file-submit-btn">
                             <i class="fas fa-upload"></i>
-                            Upload File
+                            <span>Upload File</span>
                         </button>
                     </form>
 
@@ -1269,34 +1087,36 @@
                             <div class="result-icon">
                                 <i class="fas fa-check"></i>
                             </div>
-                            <div class="result-title">File Uploaded Successfully!</div>
+                            <div class="result-title">File Uploaded Successfully! 🎉</div>
                         </div>
-                        
+
                         <div class="result-url">
                             <input type="text" id="file-url" class="result-link" readonly>
-                            <button class="copy-btn" onclick="copyToClipboard('file-url')" aria-label="Copy file URL">
+                            <button class="copy-btn" onclick="copyToClipboard('file-url')">
                                 <i class="fas fa-copy"></i>
-                                Copy Link
+                                Copy
                             </button>
                         </div>
-                        
-                        <div id="file-expires" class="expires-info"></div>
-                        
+
+                        <div id="file-expires" style="margin: 1rem 0; color: var(--text-secondary);"></div>
+
                         <div style="margin-bottom: 1rem;">
-                            <a id="download-link" href="#" class="btn btn-secondary" style="display: inline-flex; width: 100%;">
+                            <a id="download-link" href="#" class="btn btn-secondary" style="width: 100%; display: inline-flex;">
                                 <i class="fas fa-download"></i>
                                 Download File
                             </a>
                         </div>
-                        
-                        <div class="qr-section" id="file-qr-section">
+
+                        <div class="qr-section">
                             <img id="file-qr-code" class="qr-code" alt="QR Code" style="display: none;">
-                            <div class="qr-actions">
-                                <div class="qr-title">QR Code Generated</div>
-                                <div class="qr-description">Scan this QR code to download your file directly</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; margin-bottom: 0.5rem;">QR Code Generated ✨</div>
+                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                    Scan to download your file
+                                </div>
                                 <button class="btn btn-secondary btn-sm" onclick="downloadQR('file-qr-code', 'file-qr')">
                                     <i class="fas fa-download"></i>
-                                    Download QR Code
+                                    Download QR
                                 </button>
                             </div>
                         </div>
@@ -1305,123 +1125,147 @@
                     <div id="file-error" class="error-message"></div>
                 </div>
 
-                <!-- HTML Page Upload -->
-                <div class="service-card">
+                <!-- Bio Link Builder - NEW FEATURE! -->
+                <div class="service-card" style="grid-column: 1 / -1;">
                     <div class="service-header">
                         <div class="service-icon">
-                            <i class="fas fa-code"></i>
+                            <i class="fas fa-user-circle"></i>
                         </div>
-                        <h2 class="service-title">HTML Page Hosting</h2>
+                        <h2 class="service-title">Bio Link Builder 🔥</h2>
                     </div>
 
-                    <form id="html-form" onsubmit="uploadHtmlPage(event)">
+                    <form id="biolink-form" onsubmit="createBioLink(event)">
+                        <div class="form-row" style="grid-template-columns: 1fr;">
+                            <div class="form-group">
+                                <label for="bio_name" class="form-label">
+                                    <i class="fas fa-user"></i>
+                                    Your Name <span class="required">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="bio_name"
+                                    name="name"
+                                    class="form-input"
+                                    placeholder="John Doe"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="grid-template-columns: 1fr;">
+                            <div class="form-group">
+                                <label for="bio_description" class="form-label">
+                                    <i class="fas fa-align-left"></i>
+                                    Bio Description
+                                </label>
+                                <textarea
+                                    id="bio_description"
+                                    name="description"
+                                    class="form-textarea"
+                                    placeholder="Digital Creator | Entrepreneur | Coffee Lover ☕"
+                                ></textarea>
+                            </div>
+                        </div>
+
                         <div class="form-group">
-                            <label class="file-upload" for="html-file-input">
-                                <input type="file" id="html-file-input" name="file" accept=".html" required>
-                                <div class="file-upload-content">
-                                    <div class="file-upload-icon">
-                                        <i class="fas fa-file-code"></i>
-                                    </div>
-                                    <div class="file-upload-text">Drop your HTML file here or click to browse</div>
-                                    <div class="file-upload-subtext">Only .html files are supported</div>
-                                    <div id="html-file-selected" class="file-selected" style="display: none;"></div>
-                                </div>
+                            <label class="form-label">
+                                <i class="fas fa-link"></i>
+                                Social Links
                             </label>
+                            <div id="social-links-container" class="link-builder">
+                                <div class="social-link-item">
+                                    <select class="form-select social-icon-select">
+                                        <option value="fas fa-link">🔗 Link</option>
+                                        <option value="fab fa-instagram">📷 Instagram</option>
+                                        <option value="fab fa-twitter">🐦 Twitter</option>
+                                        <option value="fab fa-facebook">📘 Facebook</option>
+                                        <option value="fab fa-youtube">▶️ YouTube</option>
+                                        <option value="fab fa-linkedin">💼 LinkedIn</option>
+                                        <option value="fab fa-github">💻 GitHub</option>
+                                        <option value="fab fa-tiktok">🎵 TikTok</option>
+                                        <option value="fab fa-discord">🎮 Discord</option>
+                                        <option value="fas fa-envelope">📧 Email</option>
+                                        <option value="fab fa-whatsapp">💬 WhatsApp</option>
+                                        <option value="fab fa-telegram">✈️ Telegram</option>
+                                    </select>
+                                    <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
+                                    <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
+                                    <button type="button" class="remove-link-btn" onclick="removeSocialLink(this)" style="display: none;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn add-link-btn" onclick="addSocialLink()">
+                                <i class="fas fa-plus"></i>
+                                <span>Add Another Link</span>
+                            </button>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="html-code" class="form-label">
+                                <label for="bio_code" class="form-label">
                                     <i class="fas fa-tag"></i>
-                                    Custom Code <span class="required">*</span>
+                                    Custom URL Code <span class="required">*</span>
                                 </label>
-                                <input 
-                                    type="text" 
-                                    id="html-code" 
-                                    name="code" 
-                                    class="form-input" 
-                                    placeholder="my-page-code"
-                                    pattern="[a-zA-Z0-9]+"
-                                    title="Only alphanumeric characters allowed"
+                                <input
+                                    type="text"
+                                    id="bio_code"
+                                    name="code"
+                                    class="form-input"
+                                    placeholder="johndoe"
+                                    pattern="[a-zA-Z0-9-_]+"
                                     required
                                 >
                             </div>
 
                             <div class="form-group">
-                                <label for="html-expire-days" class="form-label">
-                                    <i class="fas fa-calendar-alt"></i>
+                                <label for="bio_expire" class="form-label">
+                                    <i class="fas fa-calendar"></i>
                                     Expire Days <span class="required">*</span>
                                 </label>
-                                <select id="html-expire-days" name="expire_days" class="form-select" required>
-                                    <option value="">Select days</option>
-                                    <option value="1">1 Day</option>
-                                    <option value="2">2 Days</option>
-                                    <option value="3">3 Days</option>
-                                    <option value="4">4 Days</option>
-                                    <option value="5">5 Days</option>
-                                    <option value="6">6 Days</option>
+                                <select id="bio_expire" name="expire_days" class="form-select" required>
+                                    <option value="">Select</option>
                                     <option value="7">7 Days</option>
+                                    <option value="14">14 Days</option>
+                                    <option value="30">30 Days</option>
+                                    <option value="90">90 Days</option>
                                 </select>
                             </div>
                         </div>
 
-                        <button type="submit" class="btn" id="html-submit-btn">
-                            <i class="fas fa-upload"></i>
-                            Upload HTML Page
+                        <button type="submit" class="btn" id="biolink-submit-btn" style="background: var(--gradient-success);">
+                            <i class="fas fa-magic"></i>
+                            <span>Create Bio Link</span>
                         </button>
                     </form>
 
-                    <div id="html-result" class="result">
+                    <div id="biolink-result" class="result">
                         <div class="result-header">
                             <div class="result-icon">
                                 <i class="fas fa-check"></i>
                             </div>
-                            <div class="result-title">HTML Page Uploaded Successfully!</div>
+                            <div class="result-title">Bio Link Created Successfully! 🎉</div>
                         </div>
-                        
+
                         <div class="result-url">
-                            <input type="text" id="html-page-url" class="result-link" readonly>
-                            <button class="copy-btn" onclick="copyToClipboard('html-page-url')" aria-label="Copy page URL">
+                            <input type="text" id="biolink-url" class="result-link" readonly>
+                            <button class="copy-btn" onclick="copyToClipboard('biolink-url')">
                                 <i class="fas fa-copy"></i>
-                                Copy Link
+                                Copy
                             </button>
                         </div>
-                        
-                        <div id="html-page-expires" class="expires-info"></div>
-                        
+
+                        <div id="biolink-expires" style="margin: 1rem 0; color: var(--text-secondary);"></div>
+
                         <div style="margin-bottom: 1rem;">
-                            <button class="btn btn-secondary" onclick="openHtmlPage()" style="width: 100%;">
+                            <button class="btn btn-secondary" onclick="openBioLink()" style="width: 100%;">
                                 <i class="fas fa-external-link-alt"></i>
-                                Open Page
+                                Open Bio Link Page
                             </button>
                         </div>
                     </div>
 
-                    <!-- View HTML Page Section -->
-                    <div class="view-section">
-                        <h3 class="form-label" style="margin-bottom: 1rem;">
-                            <i class="fas fa-eye"></i>
-                            View HTML Page
-                        </h3>
-                        <form class="view-form" onsubmit="viewHtmlPage(event)">
-                            <div class="form-group">
-                                <input 
-                                    type="text" 
-                                    id="view-html-code" 
-                                    class="form-input" 
-                                    placeholder="Enter the page code"
-                                    pattern="[a-zA-Z0-9]+"
-                                    required
-                                >
-                            </div>
-                            <button type="submit" class="btn">
-                                <i class="fas fa-eye"></i>
-                                View Page
-                            </button>
-                        </form>
-                    </div>
-
-                    <div id="html-error" class="error-message"></div>
+                    <div id="biolink-error" class="error-message"></div>
                 </div>
             </div>
 
@@ -1434,12 +1278,12 @@
                     </div>
                     <button class="btn btn-secondary btn-sm" onclick="clearLog()">
                         <i class="fas fa-trash"></i>
-                        Clear Log
+                        Clear
                     </button>
                 </div>
                 <div id="log-container">
-                    <div class="log-entry log-info">
-                        <span>[INFO] Application started - Ready to shorten URLs, share files, and host HTML pages</span>
+                    <div class="log-entry log-success">
+                        <span>🚀 Application started - Ready to create magic!</span>
                     </div>
                 </div>
             </div>
@@ -1447,96 +1291,82 @@
     </main>
 
     <!-- WhatsApp Button -->
-    <a href="https://wa.me/6285336580720" class="whatsapp-btn pulse" target="_blank" rel="noopener noreferrer" aria-label="Contact us on WhatsApp">
+    <a href="https://wa.me/6285336580720" class="whatsapp-btn" target="_blank" rel="noopener noreferrer">
         <i class="fab fa-whatsapp"></i>
     </a>
 
     <script>
-        // Global variables for upload tracking
+        // ===== GLOBAL VARIABLES =====
         let uploadStartTime = 0;
-        let uploadedBytes = 0;
         let uploadedHtmlPageUrl = '';
+        let uploadedBioLinkUrl = '';
 
-        // Utility function to format date to user's local timezone
+        // ===== STATS COUNTER =====
+        async function updateStats() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+
+                animateCounter('total-urls', data.total_urls || 0);
+                animateCounter('total-files', data.total_files || 0);
+                animateCounter('total-biolinks', data.total_html_pages || 0);
+            } catch (error) {
+                console.log('Stats update failed:', error);
+            }
+        }
+
+        function animateCounter(elementId, targetValue) {
+            const element = document.getElementById(elementId);
+            const currentValue = parseInt(element.textContent) || 0;
+            const increment = Math.ceil((targetValue - currentValue) / 20);
+
+            let current = currentValue;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= targetValue) {
+                    current = targetValue;
+                    clearInterval(timer);
+                }
+                element.textContent = current;
+            }, 50);
+        }
+
+        // Update stats every 10 seconds
+        updateStats();
+        setInterval(updateStats, 10000);
+
+        // ===== FLOATING PARTICLES =====
+        function createParticles() {
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c'];
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.cssText = `
+                    width: ${Math.random() * 100 + 50}px;
+                    height: ${Math.random() * 100 + 50}px;
+                    background: ${colors[Math.floor(Math.random() * colors.length)]};
+                    left: ${Math.random() * 100}%;
+                    top: ${Math.random() * 100}%;
+                    animation-delay: ${Math.random() * 5}s;
+                    animation-duration: ${Math.random() * 10 + 15}s;
+                    z-index: -1;
+                `;
+                document.body.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // ===== UTILITY FUNCTIONS =====
         function formatLocalDateTime(utcDateString) {
             if (!utcDateString) return 'No expiration';
-            
-            let utcDate;
-            if (utcDateString.endsWith('Z')) {
-                utcDate = new Date(utcDateString);
-            } else {
-                utcDate = new Date(utcDateString + 'Z');
-            }
-            
-            const localDate = new Date(utcDate.getTime());
-            
+            const utcDate = new Date(utcDateString.endsWith('Z') ? utcDateString : utcDateString + 'Z');
             const options = {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                timeZoneName: 'short',
-                hour12: false
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
             };
-            
-            return `Expires: ${localDate.toLocaleString('id-ID', options)}`;
+            return `⏰ Expires: ${utcDate.toLocaleString('id-ID', options)}`;
         }
 
-        // Logging function
-        function addLog(message, type = 'info') {
-            const logContainer = document.getElementById('log-container');
-            const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry log-${type}`;
-            logEntry.innerHTML = `<span>[${timestamp}] ${message}</span>`;
-            
-            logContainer.appendChild(logEntry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-            
-            // Keep only last 50 entries
-            const entries = logContainer.children;
-            if (entries.length > 50) {
-                logContainer.removeChild(entries[0]);
-            }
-        }
-
-        function clearLog() {
-            const logContainer = document.getElementById('log-container');
-            logContainer.innerHTML = '<div class="log-entry log-info"><span>[INFO] Log cleared</span></div>';
-        }
-
-        // Theme Toggle
-        function toggleTheme() {
-            const body = document.body;
-            const themeIcon = document.getElementById('theme-icon');
-            
-            if (body.getAttribute('data-theme') === 'dark') {
-                body.removeAttribute('data-theme');
-                themeIcon.className = 'fas fa-moon';
-                localStorage.setItem('theme', 'light');
-                addLog('Switched to light theme', 'info');
-            } else {
-                body.setAttribute('data-theme', 'dark');
-                themeIcon.className = 'fas fa-sun';
-                localStorage.setItem('theme', 'dark');
-                addLog('Switched to dark theme', 'info');
-            }
-        }
-
-        // Load saved theme
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedTheme = localStorage.getItem('theme');
-            const themeIcon = document.getElementById('theme-icon');
-            
-            if (savedTheme === 'dark') {
-                document.body.setAttribute('data-theme', 'dark');
-                themeIcon.className = 'fas fa-sun';
-            }
-        });
-
-        // Format file size
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -1545,7 +1375,6 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Format speed
         function formatSpeed(bytesPerSecond) {
             if (bytesPerSecond === 0) return '0 KB/s';
             const k = 1024;
@@ -1554,41 +1383,77 @@
             return parseFloat((bytesPerSecond / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Truncate filename for display
-        function truncateFilename(filename, maxLength = 50) {
-            if (filename.length <= maxLength) return filename;
-            
-            const extension = filename.split('.').pop();
-            const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
-            const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4) + '...';
-            
-            return truncatedName + '.' + extension;
+        // ===== LOGGING =====
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+
+            const icons = { info: 'ℹ️', success: '✅', error: '❌' };
+            logEntry.innerHTML = `<span>[${timestamp}] ${icons[type] || ''} ${message}</span>`;
+
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            const entries = logContainer.children;
+            if (entries.length > 50) logContainer.removeChild(entries[0]);
         }
 
-        // Load and display QR code
+        function clearLog() {
+            document.getElementById('log-container').innerHTML = '<div class="log-entry log-info"><span>🗑️ Log cleared</span></div>';
+        }
+
+        // ===== THEME TOGGLE =====
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+                addLog('Switched to light theme ☀️', 'info');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+                addLog('Switched to dark theme 🌙', 'info');
+            }
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+            }
+        });
+
+        // ===== QR CODE =====
         async function loadQRCode(qrUrl, imgElementId) {
             try {
                 const img = document.getElementById(imgElementId);
                 img.src = qrUrl;
                 img.style.display = 'block';
-                img.onload = function() {
-                    addLog('QR code loaded and displayed', 'success');
-                };
+                img.onload = () => addLog('QR code generated ✨', 'success');
             } catch (error) {
-                addLog(`Error loading QR code: ${error.message}`, 'error');
+                addLog(`QR code error: ${error.message}`, 'error');
             }
         }
 
-        // Download QR code
         function downloadQR(imgElementId, filename) {
             const img = document.getElementById(imgElementId);
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            
+
             canvas.width = img.naturalWidth;
             canvas.height = img.naturalHeight;
             ctx.drawImage(img, 0, 0);
-            
+
             canvas.toBlob(function(blob) {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1598,77 +1463,61 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                addLog(`QR code downloaded: ${filename}.png`, 'success');
+                addLog(`QR code downloaded: ${filename}.png 💾`, 'success');
             });
         }
 
-        // URL Shortener
+        // ===== URL SHORTENER =====
         async function shortenUrl(event) {
             event.preventDefault();
-            
+
             const form = event.target;
             const formData = new FormData(form);
             const submitBtn = document.getElementById('url-submit-btn');
             const errorDiv = document.getElementById('url-error');
-            
-            // Hide previous errors and results
+
             errorDiv.classList.remove('show');
             document.getElementById('url-result').classList.remove('show');
-            
-            // Show loading state
-            submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Shortening...';
+
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Processing...</span>';
             submitBtn.disabled = true;
-            
+
             const originalUrl = formData.get('original_url');
-            addLog(`Attempting to shorten URL: ${originalUrl}`, 'info');
-            
+            addLog(`Shortening URL: ${originalUrl}`, 'info');
+
             try {
                 const response = await fetch('/shorten', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
-                    const resultDiv = document.getElementById('url-result');
-                    const shortUrlInput = document.getElementById('short-url');
-                    const expiresDiv = document.getElementById('url-expires');
-                    
-                    shortUrlInput.value = data.short_url;
-                    
-                    if (data.expires_at) {
-                        expiresDiv.textContent = formatLocalDateTime(data.expires_at);
-                    } else {
-                        expiresDiv.textContent = 'No expiration';
-                    }
-                    
-                    // Load QR code
+                    document.getElementById('short-url').value = data.short_url;
+                    document.getElementById('url-expires').textContent = formatLocalDateTime(data.expires_at);
                     await loadQRCode(data.qr_code_url, 'url-qr-code');
-                    
-                    resultDiv.classList.add('show');
+                    document.getElementById('url-result').classList.add('show');
                     form.reset();
-                    
-                    addLog(`URL shortened successfully: ${data.code}`, 'success');
+                    addLog(`URL shortened: ${data.code} ✨`, 'success');
+                    updateStats();
                 } else {
-                    const errorMessage = data.detail || 'An error occurred while shortening the URL';
-                    showError('url-error', errorMessage);
-                    addLog(`Error shortening URL: ${errorMessage}`, 'error');
+                    showError('url-error', data.detail || 'Error shortening URL');
+                    addLog(`Error: ${data.detail}`, 'error');
                 }
             } catch (error) {
-                const errorMessage = 'Network error: ' + error.message;
-                showError('url-error', errorMessage);
+                showError('url-error', 'Network error: ' + error.message);
                 addLog(`Network error: ${error.message}`, 'error');
             } finally {
-                submitBtn.innerHTML = '<i class="fas fa-compress-alt"></i> Shorten URL';
+                submitBtn.innerHTML = '<i class="fas fa-compress-alt"></i><span>Shorten URL</span>';
                 submitBtn.disabled = false;
             }
         }
 
-        // File Upload with Progress
+        // ===== FILE UPLOAD =====
         async function uploadFile(event) {
             event.preventDefault();
-            
+
             const form = event.target;
             const formData = new FormData(form);
             const submitBtn = document.getElementById('file-submit-btn');
@@ -1679,397 +1528,511 @@
             const progressText = document.getElementById('progress-text');
             const progressSpeed = document.getElementById('progress-speed');
 
-            // Hide previous errors and results
             errorDiv.classList.remove('show');
             document.getElementById('file-result').classList.remove('show');
 
-            // Validate file
             const file = fileInput.files[0];
             if (!file) {
                 showError('file-error', 'No file selected');
-                addLog('File upload failed: No file selected', 'error');
                 return;
             }
 
-            if (file.size > 100 * 1024 * 1024) {
-                showError('file-error', 'File size too large (max 100MB)');
-                addLog(`File upload failed: File too large (${formatFileSize(file.size)})`, 'error');
+            if (file.size > 50 * 1024 * 1024) {
+                showError('file-error', 'File too large (max 50MB)');
+                addLog(`File too large: ${formatFileSize(file.size)}`, 'error');
                 return;
             }
 
-            // Show progress and loading state
             progressContainer.classList.add('show');
-            submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Uploading...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Uploading...</span>';
             submitBtn.disabled = true;
 
-            // Initialize progress tracking
             uploadStartTime = Date.now();
-            uploadedBytes = 0;
 
-            addLog(`Starting upload: ${file.name} (${formatFileSize(file.size)})`, 'info');
+            addLog(`Uploading: ${file.name} (${formatFileSize(file.size)})`, 'info');
 
             try {
-                // Create XMLHttpRequest for progress tracking
                 const xhr = new XMLHttpRequest();
-                
-                // Track upload progress
+
                 xhr.upload.addEventListener('progress', function(e) {
                     if (e.lengthComputable) {
                         const percentComplete = (e.loaded / e.total) * 100;
-                        const currentTime = Date.now();
-                        const elapsedTime = (currentTime - uploadStartTime) / 1000;
+                        const elapsedTime = (Date.now() - uploadStartTime) / 1000;
                         const speed = e.loaded / elapsedTime;
 
-                        // Update progress bar
                         progressFill.style.width = percentComplete + '%';
                         progressText.textContent = `Uploading... ${Math.round(percentComplete)}%`;
                         progressSpeed.textContent = formatSpeed(speed);
-
-                        uploadedBytes = e.loaded;
                     }
                 });
 
-                // Handle response
                 xhr.onload = async function() {
                     if (xhr.status === 200) {
                         const data = JSON.parse(xhr.responseText);
-                        
-                        const resultDiv = document.getElementById('file-result');
-                        const fileUrlInput = document.getElementById('file-url');
-                        const expiresDiv = document.getElementById('file-expires');
-                        const downloadLink = document.getElementById('download-link');
 
-                        fileUrlInput.value = data.file_url;
-                        downloadLink.href = data.file_url;
-                        
-                        if (data.expires_at) {
-                            expiresDiv.textContent = formatLocalDateTime(data.expires_at);
-                        } else {
-                            expiresDiv.textContent = 'No expiration';
-                        }
-
-                        // Load QR code
+                        document.getElementById('file-url').value = data.file_url;
+                        document.getElementById('download-link').href = data.file_url;
+                        document.getElementById('file-expires').textContent = formatLocalDateTime(data.expires_at);
                         await loadQRCode(data.qr_code_url, 'file-qr-code');
 
-                        // Show success
                         progressFill.style.width = '100%';
                         progressText.textContent = 'Upload complete! 100%';
-                        
+
                         setTimeout(() => {
                             progressContainer.classList.remove('show');
-                            resultDiv.classList.add('show');
+                            document.getElementById('file-result').classList.add('show');
                         }, 1000);
 
                         form.reset();
-                        resetFileUploadDisplay();
+                        document.getElementById('file-selected-name').style.display = 'none';
 
-                        addLog(`File uploaded successfully: ${data.filename} (${formatFileSize(data.size)})`, 'success');
+                        addLog(`File uploaded: ${data.filename} (${formatFileSize(data.size)}) 📁`, 'success');
+                        updateStats();
                     } else {
                         const errorData = JSON.parse(xhr.responseText);
-                        const errorMessage = errorData.detail || 'An error occurred while uploading the file';
-                        showError('file-error', errorMessage);
-                        addLog(`Error uploading file: ${errorMessage}`, 'error');
+                        showError('file-error', errorData.detail || 'Upload error');
+                        addLog(`Upload error: ${errorData.detail}`, 'error');
                         progressContainer.classList.remove('show');
                     }
                 };
 
                 xhr.onerror = function() {
-                    const errorMessage = 'Network error occurred during upload';
-                    showError('file-error', errorMessage);
-                    addLog(`Network error: ${errorMessage}`, 'error');
+                    showError('file-error', 'Network error during upload');
+                    addLog('Network error during upload', 'error');
                     progressContainer.classList.remove('show');
                 };
 
-                // Send the request
                 xhr.open('POST', '/upload');
                 xhr.send(formData);
 
             } catch (error) {
-                const errorMessage = 'Upload error: ' + error.message;
-                showError('file-error', errorMessage);
+                showError('file-error', 'Upload error: ' + error.message);
                 addLog(`Upload error: ${error.message}`, 'error');
                 progressContainer.classList.remove('show');
             } finally {
-                submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload File';
+                submitBtn.innerHTML = '<i class="fas fa-upload"></i><span>Upload File</span>';
                 submitBtn.disabled = false;
             }
         }
 
-        // HTML Page Upload
-        async function uploadHtmlPage(event) {
+        // ===== BIO LINK BUILDER =====
+        function addSocialLink() {
+            const container = document.getElementById('social-links-container');
+            const newLink = document.createElement('div');
+            newLink.className = 'social-link-item';
+            newLink.innerHTML = `
+                <select class="form-select social-icon-select">
+                    <option value="fas fa-link">🔗 Link</option>
+                    <option value="fab fa-instagram">📷 Instagram</option>
+                    <option value="fab fa-twitter">🐦 Twitter</option>
+                    <option value="fab fa-facebook">📘 Facebook</option>
+                    <option value="fab fa-youtube">▶️ YouTube</option>
+                    <option value="fab fa-linkedin">💼 LinkedIn</option>
+                    <option value="fab fa-github">💻 GitHub</option>
+                    <option value="fab fa-tiktok">🎵 TikTok</option>
+                    <option value="fab fa-discord">🎮 Discord</option>
+                    <option value="fas fa-envelope">📧 Email</option>
+                    <option value="fab fa-whatsapp">💬 WhatsApp</option>
+                    <option value="fab fa-telegram">✈️ Telegram</option>
+                </select>
+                <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
+                <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
+                <button type="button" class="remove-link-btn" onclick="removeSocialLink(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            container.appendChild(newLink);
+            addLog('Social link field added ➕', 'info');
+        }
+
+        function removeSocialLink(button) {
+            button.parentElement.remove();
+            addLog('Social link field removed ➖', 'info');
+        }
+
+        async function createBioLink(event) {
             event.preventDefault();
-            
+
             const form = event.target;
-            const formData = new FormData(form);
-            const submitBtn = document.getElementById('html-submit-btn');
-            const errorDiv = document.getElementById('html-error');
-            
-            // Hide previous errors and results
+            const submitBtn = document.getElementById('biolink-submit-btn');
+            const errorDiv = document.getElementById('biolink-error');
+
             errorDiv.classList.remove('show');
-            document.getElementById('html-result').classList.remove('show');
-            
-            // Show loading state
-            submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Uploading...';
+            document.getElementById('biolink-result').classList.remove('show');
+
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Creating...</span>';
             submitBtn.disabled = true;
-            
-            const file = document.getElementById('html-file-input').files[0];
-            const code = formData.get('code');
-            addLog(`Attempting to upload HTML page: ${file.name} with code: ${code}`, 'info');
-            
+
+            const name = document.getElementById('bio_name').value;
+            const description = document.getElementById('bio_description').value;
+            const code = document.getElementById('bio_code').value;
+            const expireDays = document.getElementById('bio_expire').value;
+
+            // Collect social links
+            const socialLinks = [];
+            const linkItems = document.querySelectorAll('.social-link-item');
+            linkItems.forEach(item => {
+                const icon = item.querySelector('.social-icon-select').value;
+                const title = item.querySelectorAll('.form-input')[0].value;
+                const url = item.querySelectorAll('.form-input')[1].value;
+
+                if (title && url) {
+                    socialLinks.push({ icon, title, url });
+                }
+            });
+
+            // Generate HTML page for bio link
+            const bioHtml = generateBioLinkHTML(name, description, socialLinks);
+            const blob = new Blob([bioHtml], { type: 'text/html' });
+            const file = new File([blob], `${code}.html`, { type: 'text/html' });
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('code', code);
+            formData.append('expire_days', expireDays);
+
+            addLog(`Creating bio link: ${code}`, 'info');
+
             try {
                 const response = await fetch('/upload/html', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     const pageUrl = `${window.location.origin}/view/${code}`;
-                    uploadedHtmlPageUrl = pageUrl;
-                    
-                    document.getElementById('html-page-url').value = pageUrl;
-                    document.getElementById('html-page-expires').textContent = formatLocalDateTime(data.expires_at);
-                    
-                    document.getElementById('html-result').classList.add('show');
+                    uploadedBioLinkUrl = pageUrl;
+
+                    document.getElementById('biolink-url').value = pageUrl;
+                    document.getElementById('biolink-expires').textContent = formatLocalDateTime(data.expires_at);
+                    document.getElementById('biolink-result').classList.add('show');
                     form.reset();
-                    resetHtmlFileUploadDisplay();
-                    
-                    addLog(`HTML page uploaded successfully: ${code}`, 'success');
+
+                    // Reset social links container
+                    const container = document.getElementById('social-links-container');
+                    container.innerHTML = `
+                        <div class="social-link-item">
+                            <select class="form-select social-icon-select">
+                                <option value="fas fa-link">🔗 Link</option>
+                                <option value="fab fa-instagram">📷 Instagram</option>
+                                <option value="fab fa-twitter">🐦 Twitter</option>
+                                <option value="fab fa-facebook">📘 Facebook</option>
+                                <option value="fab fa-youtube">▶️ YouTube</option>
+                                <option value="fab fa-linkedin">💼 LinkedIn</option>
+                                <option value="fab fa-github">💻 GitHub</option>
+                                <option value="fab fa-tiktok">🎵 TikTok</option>
+                                <option value="fab fa-discord">🎮 Discord</option>
+                                <option value="fas fa-envelope">📧 Email</option>
+                                <option value="fab fa-whatsapp">💬 WhatsApp</option>
+                                <option value="fab fa-telegram">✈️ Telegram</option>
+                            </select>
+                            <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
+                            <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
+                            <button type="button" class="remove-link-btn" onclick="removeSocialLink(this)" style="display: none;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    addLog(`Bio link created: ${code} 🎉`, 'success');
+                    updateStats();
                 } else {
-                    const errorMessage = data.detail || 'An error occurred while uploading the HTML page';
-                    showError('html-error', errorMessage);
-                    addLog(`Error uploading HTML page: ${errorMessage}`, 'error');
+                    showError('biolink-error', data.detail || 'Error creating bio link');
+                    addLog(`Error: ${data.detail}`, 'error');
                 }
             } catch (error) {
-                const errorMessage = 'Network error: ' + error.message;
-                showError('html-error', errorMessage);
+                showError('biolink-error', 'Network error: ' + error.message);
                 addLog(`Network error: ${error.message}`, 'error');
             } finally {
-                submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload HTML Page';
+                submitBtn.innerHTML = '<i class="fas fa-magic"></i><span>Create Bio Link</span>';
                 submitBtn.disabled = false;
             }
         }
 
-        // View HTML Page
-        function viewHtmlPage(event) {
-            event.preventDefault();
-            
-            const code = document.getElementById('view-html-code').value.trim();
-            if (!code) {
-                showError('html-error', 'Please enter a page code');
-                return;
+        function generateBioLinkHTML(name, description, socialLinks) {
+            const linksHTML = socialLinks.map(link => `
+                <a href="${link.url}" class="bio-link" target="_blank" rel="noopener noreferrer">
+                    <i class="${link.icon}"></i>
+                    <span>${link.title}</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            `).join('');
+
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${name} - Bio Link</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
             }
-            
-            const pageUrl = `${window.location.origin}/view/${code}`;
-            window.open(pageUrl, '_blank');
-            addLog(`Opening HTML page: ${code}`, 'info');
-        }
-
-        // Open uploaded HTML page
-        function openHtmlPage() {
-            if (uploadedHtmlPageUrl) {
-                window.open(uploadedHtmlPageUrl, '_blank');
-                addLog(`Opening uploaded HTML page`, 'info');
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
 
-        // Reset file upload display
-        function resetFileUploadDisplay() {
-            const fileSelectedDiv = document.getElementById('file-selected-name');
-            fileSelectedDiv.style.display = 'none';
-            fileSelectedDiv.textContent = '';
+        .avatar {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            margin: 0 auto 1.5rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
         }
 
-        // Reset HTML file upload display
-        function resetHtmlFileUploadDisplay() {
-            const fileSelectedDiv = document.getElementById('html-file-selected');
-            fileSelectedDiv.style.display = 'none';
-            fileSelectedDiv.textContent = '';
+        .name {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
         }
 
-        // Show Error Message
+        .description {
+            text-align: center;
+            color: #64748b;
+            font-size: 1rem;
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+        }
+
+        .bio-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem 1.5rem;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .bio-link:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .bio-link i:first-child {
+            font-size: 1.5rem;
+        }
+
+        .bio-link span {
+            flex: 1;
+            text-align: left;
+        }
+
+        .bio-link i:last-child {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .bio-link:hover i:last-child {
+            opacity: 1;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 2rem 1.5rem;
+            }
+
+            .name {
+                font-size: 1.75rem;
+            }
+
+            .bio-link {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <h1 class="name">${name}</h1>
+        ${description ? `<p class="description">${description}</p>` : ''}
+        <div class="links">
+            ${linksHTML}
+        </div>
+        <div class="footer">
+            Powered by <a href="${window.location.origin}" target="_blank">LinkShare Pro</a>
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+
+        function openBioLink() {
+            if (uploadedBioLinkUrl) {
+                window.open(uploadedBioLinkUrl, '_blank');
+                addLog('Opening bio link page 🚀', 'info');
+            }
+        }
+
+        // ===== UTILITY FUNCTIONS =====
         function showError(elementId, message) {
             const errorDiv = document.getElementById(elementId);
             errorDiv.textContent = message;
             errorDiv.classList.add('show');
-            
-            // Auto-hide after 10 seconds
+
             setTimeout(() => {
                 errorDiv.classList.remove('show');
             }, 10000);
         }
 
-        // Copy to Clipboard
         async function copyToClipboard(elementId) {
             const element = document.getElementById(elementId);
             const copyBtn = element.nextElementSibling;
-            
+
             try {
                 await navigator.clipboard.writeText(element.value);
-                
-                // Show success feedback
+
                 const originalContent = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
                 copyBtn.style.background = '#10b981';
-                
+
                 setTimeout(() => {
                     copyBtn.innerHTML = originalContent;
                     copyBtn.style.background = '';
                 }, 2000);
-                
-                addLog(`Copied to clipboard: ${element.value}`, 'success');
-                
+
+                addLog(`Copied to clipboard 📋`, 'success');
+
             } catch (error) {
-                // Fallback for older browsers
                 element.select();
                 document.execCommand('copy');
-                
-                // Show feedback
+
                 const originalContent = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
                 setTimeout(() => {
                     copyBtn.innerHTML = originalContent;
                 }, 2000);
-                
-                addLog(`Copied to clipboard (fallback): ${element.value}`, 'success');
+
+                addLog(`Copied to clipboard 📋`, 'success');
             }
         }
 
-        // File Upload Visual Feedback
+        // ===== FILE UPLOAD VISUAL FEEDBACK =====
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const fileSelectedDiv = document.getElementById('file-selected-name');
-            
+
             if (file) {
-                const truncatedName = truncateFilename(file.name);
-                fileSelectedDiv.textContent = `Selected: ${truncatedName}`;
+                fileSelectedDiv.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
                 fileSelectedDiv.style.display = 'block';
                 addLog(`File selected: ${file.name}`, 'info');
             } else {
-                resetFileUploadDisplay();
+                fileSelectedDiv.style.display = 'none';
             }
         });
 
-        // HTML File Upload Visual Feedback
-        document.getElementById('html-file-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const fileSelectedDiv = document.getElementById('html-file-selected');
-            
-            if (file) {
-                if (!file.name.endsWith('.html')) {
-                    showError('html-error', 'Only .html files are allowed');
-                    this.value = '';
-                    return;
-                }
-                fileSelectedDiv.textContent = `Selected: ${file.name}`;
-                fileSelectedDiv.style.display = 'block';
-                addLog(`HTML file selected: ${file.name}`, 'info');
-            } else {
-                resetHtmlFileUploadDisplay();
-            }
-        });
-
-        // Drag and Drop for regular files
+        // ===== DRAG AND DROP =====
         const fileUpload = document.querySelector('#file-input').parentElement;
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            fileUpload.addEventListener(eventName, preventDefaults, false);
+            fileUpload.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
         });
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
         ['dragenter', 'dragover'].forEach(eventName => {
-            fileUpload.addEventListener(eventName, highlight, false);
+            fileUpload.addEventListener(eventName, () => {
+                fileUpload.classList.add('dragover');
+            }, false);
         });
 
         ['dragleave', 'drop'].forEach(eventName => {
-            fileUpload.addEventListener(eventName, unhighlight, false);
+            fileUpload.addEventListener(eventName, () => {
+                fileUpload.classList.remove('dragover');
+            }, false);
         });
 
-        function highlight(e) {
-            fileUpload.classList.add('dragover');
-        }
-
-        function unhighlight(e) {
-            fileUpload.classList.remove('dragover');
-        }
-
-        fileUpload.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            
+        fileUpload.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
             document.getElementById('file-input').files = files;
-            
+
             if (files[0]) {
                 const fileSelectedDiv = document.getElementById('file-selected-name');
-                const truncatedName = truncateFilename(files[0].name);
-                fileSelectedDiv.textContent = `Selected: ${truncatedName}`;
+                fileSelectedDiv.textContent = `Selected: ${files[0].name} (${formatFileSize(files[0].size)})`;
                 fileSelectedDiv.style.display = 'block';
                 addLog(`File dropped: ${files[0].name}`, 'info');
             }
-        }
+        }, false);
 
-        // Drag and Drop for HTML files
-        const htmlFileUpload = document.querySelector('#html-file-input').parentElement;
-
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            htmlFileUpload.addEventListener(eventName, preventDefaults, false);
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            htmlFileUpload.addEventListener(eventName, highlightHtml, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            htmlFileUpload.addEventListener(eventName, unhighlightHtml, false);
-        });
-
-        function highlightHtml(e) {
-            htmlFileUpload.classList.add('dragover');
-        }
-
-        function unhighlightHtml(e) {
-            htmlFileUpload.classList.remove('dragover');
-        }
-
-        htmlFileUpload.addEventListener('drop', handleHtmlDrop, false);
-
-        function handleHtmlDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            
-            if (files[0] && files[0].name.endsWith('.html')) {
-                document.getElementById('html-file-input').files = files;
-                const fileSelectedDiv = document.getElementById('html-file-selected');
-                fileSelectedDiv.textContent = `Selected: ${files[0].name}`;
-                fileSelectedDiv.style.display = 'block';
-                addLog(`HTML file dropped: ${files[0].name}`, 'info');
-            } else {
-                showError('html-error', 'Only .html files are allowed');
-            }
-        }
-
-        // Keyboard Navigation Enhancement
+        // ===== KEYBOARD SHORTCUTS =====
         document.addEventListener('keydown', function(e) {
-            // Escape key to close results and errors
             if (e.key === 'Escape') {
                 document.querySelectorAll('.result.show, .error-message.show').forEach(element => {
                     element.classList.remove('show');
                 });
-                addLog('Results/errors closed via Escape key', 'info');
+                addLog('Results/errors closed', 'info');
             }
         });
 
-        // Auto-focus first input on page load
+        // Focus first input on page load
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('original_url').focus();
-            addLog('Application ready - Focus set to URL input', 'info');
         });
     </script>
 </body>
