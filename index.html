@@ -717,6 +717,48 @@
             background: var(--gradient-success);
         }
 
+        /* Theme Selection Styles */
+        .theme-option {
+            cursor: pointer;
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .theme-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .theme-preview {
+            width: 100%;
+            height: 80px;
+            border-radius: var(--radius);
+            margin-bottom: 0.5rem;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .theme-option:hover .theme-preview {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .theme-option input[type="radio"]:checked + .theme-preview {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2), var(--shadow-lg);
+            transform: scale(1.05);
+        }
+
+        .theme-option span {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
         /* ===== CONSOLE LOG ===== */
         .console-log {
             background: var(--bg-card);
@@ -1129,26 +1171,70 @@
                     <div id="file-error" class="error-message"></div>
                 </div>
 
-                <!-- Bio Link Builder - NEW FEATURE! -->
+                <!-- Premium Bio Link Builder - UPGRADED! -->
                 <div class="service-card" style="grid-column: 1 / -1;">
-                    <div class="service-header">
-                        <div class="service-icon">
-                            <i class="fas fa-user-circle"></i>
+                    <div class="service-header" style="background: var(--gradient-cosmic); padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                        <div class="service-icon" style="background: rgba(255,255,255,0.2); width: 60px; height: 60px;">
+                            <i class="fas fa-star" style="color: white; font-size: 1.8rem;"></i>
                         </div>
-                        <h2 class="service-title">Bio Link Builder 🔥</h2>
+                        <h2 class="service-title" style="color: white; font-size: 2rem;">Premium Bio Link Builder ⭐</h2>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 0.95rem; margin-top: 0.5rem;">Create stunning bio links with custom themes, profile images & analytics - Like Linktree Premium!</p>
                     </div>
 
                     <form id="biolink-form" onsubmit="createBioLink(event)">
-                        <div class="form-row" style="grid-template-columns: 1fr;">
+                        <!-- Profile & Cover Images -->
+                        <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                             <div class="form-group">
-                                <label for="bio_name" class="form-label">
-                                    <i class="fas fa-user"></i>
-                                    Your Name <span class="required">*</span>
+                                <label class="form-label">
+                                    <i class="fas fa-image"></i>
+                                    Profile Picture (Optional)
+                                </label>
+                                <div style="display: flex; gap: 1rem; align-items: center;">
+                                    <input type="file" id="profile_image" accept="image/*" style="flex: 1;" class="form-input" onchange="uploadImage(this, 'profile')">
+                                    <div id="profile-preview" style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-secondary); display: none; background-size: cover; background-position: center; border: 3px solid var(--primary);"></div>
+                                </div>
+                                <input type="hidden" id="profile_image_url" value="">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-panorama"></i>
+                                    Cover Image (Optional)
+                                </label>
+                                <div style="display: flex; gap: 1rem; align-items: center;">
+                                    <input type="file" id="cover_image" accept="image/*" style="flex: 1;" class="form-input" onchange="uploadImage(this, 'cover')">
+                                    <div id="cover-preview" style="width: 120px; height: 60px; border-radius: var(--radius); background: var(--bg-secondary); display: none; background-size: cover; background-position: center; border: 2px solid var(--primary);"></div>
+                                </div>
+                                <input type="hidden" id="cover_image_url" value="">
+                            </div>
+                        </div>
+
+                        <!-- Basic Info -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bio_username" class="form-label">
+                                    <i class="fas fa-at"></i>
+                                    Username <span class="required">*</span>
                                 </label>
                                 <input
                                     type="text"
-                                    id="bio_name"
-                                    name="name"
+                                    id="bio_username"
+                                    class="form-input"
+                                    placeholder="johndoe"
+                                    pattern="[a-zA-Z0-9-_]+"
+                                    required
+                                >
+                                <small style="color: var(--text-muted); font-size: 0.85rem;">Your bio link: nauval.cloud/bio/<span id="username-preview">username</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bio_display_name" class="form-label">
+                                    <i class="fas fa-user"></i>
+                                    Display Name <span class="required">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="bio_display_name"
                                     class="form-input"
                                     placeholder="John Doe"
                                     required
@@ -1156,25 +1242,77 @@
                             </div>
                         </div>
 
-                        <div class="form-row" style="grid-template-columns: 1fr;">
-                            <div class="form-group">
+                        <!-- Bio & Theme -->
+                        <div class="form-row">
+                            <div class="form-group" style="grid-column: 1 / -1;">
                                 <label for="bio_description" class="form-label">
                                     <i class="fas fa-align-left"></i>
                                     Bio Description
                                 </label>
                                 <textarea
                                     id="bio_description"
-                                    name="description"
                                     class="form-textarea"
                                     placeholder="Digital Creator | Entrepreneur | Coffee Lover ☕"
+                                    rows="3"
                                 ></textarea>
                             </div>
                         </div>
 
+                        <!-- Theme Selection -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-palette"></i>
+                                Choose Theme <span class="required">*</span>
+                            </label>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                                <label class="theme-option" data-theme="cosmic">
+                                    <input type="radio" name="theme" value="cosmic" checked>
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                                    <span>Cosmic</span>
+                                </label>
+                                <label class="theme-option" data-theme="minimal">
+                                    <input type="radio" name="theme" value="minimal">
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);"></div>
+                                    <span>Minimal</span>
+                                </label>
+                                <label class="theme-option" data-theme="gradient">
+                                    <input type="radio" name="theme" value="gradient">
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+                                    <span>Gradient</span>
+                                </label>
+                                <label class="theme-option" data-theme="dark">
+                                    <input type="radio" name="theme" value="dark">
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"></div>
+                                    <span>Dark</span>
+                                </label>
+                                <label class="theme-option" data-theme="neon">
+                                    <input type="radio" name="theme" value="neon">
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #ff00cc 0%, #333399 100%);"></div>
+                                    <span>Neon</span>
+                                </label>
+                                <label class="theme-option" data-theme="ocean">
+                                    <input type="radio" name="theme" value="ocean">
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);"></div>
+                                    <span>Ocean</span>
+                                </label>
+                                <label class="theme-option" data-theme="sunset">
+                                    <input type="radio" name="theme" value="sunset">
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);"></div>
+                                    <span>Sunset</span>
+                                </label>
+                                <label class="theme-option" data-theme="forest">
+                                    <input type="radio" name="theme" value="forest">
+                                    <div class="theme-preview" style="background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);"></div>
+                                    <span>Forest</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Custom Links -->
                         <div class="form-group">
                             <label class="form-label">
                                 <i class="fas fa-link"></i>
-                                Social Links
+                                Custom Links
                             </label>
                             <div id="social-links-container" class="link-builder">
                                 <div class="social-link-item">
@@ -1191,6 +1329,8 @@
                                         <option value="fas fa-envelope">📧 Email</option>
                                         <option value="fab fa-whatsapp">💬 WhatsApp</option>
                                         <option value="fab fa-telegram">✈️ Telegram</option>
+                                        <option value="fab fa-spotify">🎵 Spotify</option>
+                                        <option value="fab fa-twitch">🎮 Twitch</option>
                                     </select>
                                     <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
                                     <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
@@ -1205,41 +1345,9 @@
                             </button>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="bio_code" class="form-label">
-                                    <i class="fas fa-tag"></i>
-                                    Custom URL Code <span class="required">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    id="bio_code"
-                                    name="code"
-                                    class="form-input"
-                                    placeholder="johndoe"
-                                    pattern="[a-zA-Z0-9-_]+"
-                                    required
-                                >
-                            </div>
-
-                            <div class="form-group">
-                                <label for="bio_expire" class="form-label">
-                                    <i class="fas fa-calendar"></i>
-                                    Expire Days <span class="required">*</span>
-                                </label>
-                                <select id="bio_expire" name="expire_days" class="form-select" required>
-                                    <option value="">Select</option>
-                                    <option value="7">7 Days</option>
-                                    <option value="14">14 Days</option>
-                                    <option value="30">30 Days</option>
-                                    <option value="90">90 Days</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn" id="biolink-submit-btn" style="background: var(--gradient-success);">
+                        <button type="submit" class="btn" id="biolink-submit-btn" style="background: var(--gradient-cosmic); font-size: 1.1rem; padding: 1.25rem;">
                             <i class="fas fa-magic"></i>
-                            <span>Create Bio Link</span>
+                            <span>Create Premium Bio Link</span>
                         </button>
                     </form>
 
@@ -1331,7 +1439,7 @@
 
                 animateCounter('total-urls', data.total_urls || 0);
                 animateCounter('total-files', data.total_files || 0);
-                animateCounter('total-biolinks', data.total_html_pages || 0);
+                animateCounter('total-biolinks', data.total_biolinks || 0);
                 animateCounter('total-snippets', data.total_snippets || 0);
             } catch (error) {
                 console.log('Stats update failed:', error);
@@ -1638,6 +1746,71 @@
             }
         }
 
+        // ===== IMAGE UPLOAD FOR BIO LINKS =====
+        async function uploadImage(input, type) {
+            if (!input.files || !input.files[0]) return;
+
+            const file = input.files[0];
+            const maxSize = 10 * 1024 * 1024; // 10MB
+
+            if (file.size > maxSize) {
+                alert('Image too large! Maximum size is 10MB');
+                input.value = '';
+                return;
+            }
+
+            const previewId = type === 'profile' ? 'profile-preview' : 'cover-preview';
+            const urlInputId = type === 'profile' ? 'profile_image_url' : 'cover_image_url';
+            const preview = document.getElementById(previewId);
+
+            // Show loading state
+            preview.style.display = 'block';
+            preview.style.background = 'linear-gradient(45deg, #667eea, #764ba2)';
+            preview.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: white;"><i class="fas fa-spinner fa-spin"></i></div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/upload/image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Upload failed');
+                }
+
+                const data = await response.json();
+
+                // Update preview with uploaded image
+                preview.style.backgroundImage = `url(${data.url})`;
+                preview.innerHTML = '';
+                document.getElementById(urlInputId).value = data.url;
+
+                addLog(`${type === 'profile' ? 'Profile' : 'Cover'} image uploaded successfully! 📸`, 'success');
+
+            } catch (error) {
+                alert(`Image upload failed: ${error.message}`);
+                preview.style.display = 'none';
+                input.value = '';
+                addLog(`Image upload error: ${error.message}`, 'error');
+            }
+        }
+
+        // Update username preview in real-time
+        document.addEventListener('DOMContentLoaded', function() {
+            const usernameInput = document.getElementById('bio_username');
+            const usernamePreview = document.getElementById('username-preview');
+
+            if (usernameInput && usernamePreview) {
+                usernameInput.addEventListener('input', function() {
+                    usernamePreview.textContent = this.value || 'username';
+                });
+            }
+        });
+
         // ===== BIO LINK BUILDER =====
         function addSocialLink() {
             const container = document.getElementById('social-links-container');
@@ -1657,6 +1830,8 @@
                     <option value="fas fa-envelope">📧 Email</option>
                     <option value="fab fa-whatsapp">💬 WhatsApp</option>
                     <option value="fab fa-telegram">✈️ Telegram</option>
+                    <option value="fab fa-spotify">🎵 Spotify</option>
+                    <option value="fab fa-twitch">🎮 Twitch</option>
                 </select>
                 <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
                 <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
@@ -1686,38 +1861,49 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Creating...</span>';
             submitBtn.disabled = true;
 
-            const name = document.getElementById('bio_name').value;
-            const description = document.getElementById('bio_description').value;
-            const code = document.getElementById('bio_code').value;
-            const expireDays = document.getElementById('bio_expire').value;
+            // Get form values
+            const username = document.getElementById('bio_username').value;
+            const displayName = document.getElementById('bio_display_name').value;
+            const bio = document.getElementById('bio_description').value;
+            const profileImage = document.getElementById('profile_image_url').value;
+            const coverImage = document.getElementById('cover_image_url').value;
+            const theme = document.querySelector('input[name="theme"]:checked').value;
 
-            // Collect social links
-            const socialLinks = [];
+            // Collect custom links
+            const links = [];
+            const socialLinks = {};
             const linkItems = document.querySelectorAll('.social-link-item');
-            linkItems.forEach(item => {
+
+            linkItems.forEach((item, index) => {
                 const icon = item.querySelector('.social-icon-select').value;
                 const title = item.querySelectorAll('.form-input')[0].value;
                 const url = item.querySelectorAll('.form-input')[1].value;
 
                 if (title && url) {
-                    socialLinks.push({ icon, title, url });
+                    links.push({
+                        id: `link_${index}`,
+                        icon,
+                        title,
+                        url
+                    });
                 }
             });
 
-            // Generate HTML page for bio link
-            const bioHtml = generateBioLinkHTML(name, description, socialLinks);
-            const blob = new Blob([bioHtml], { type: 'text/html' });
-            const file = new File([blob], `${code}.html`, { type: 'text/html' });
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('code', code);
-            formData.append('expire_days', expireDays);
-
-            addLog(`Creating bio link: ${code}`, 'info');
+            addLog(`Creating premium bio link for @${username}...`, 'info');
 
             try {
-                const response = await fetch('/upload/html', {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('display_name', displayName);
+                formData.append('bio', bio);
+                formData.append('profile_image', profileImage);
+                formData.append('cover_image', coverImage);
+                formData.append('theme', theme);
+                formData.append('links', JSON.stringify(links));
+                formData.append('social_links', JSON.stringify(socialLinks));
+                formData.append('analytics_enabled', 'true');
+
+                const response = await fetch('/biolink/create', {
                     method: 'POST',
                     body: formData
                 });
@@ -1725,15 +1911,21 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    const pageUrl = `${window.location.origin}/view/${code}`;
+                    const pageUrl = data.preview_url;
                     uploadedBioLinkUrl = pageUrl;
 
                     document.getElementById('biolink-url').value = pageUrl;
-                    document.getElementById('biolink-expires').textContent = formatLocalDateTime(data.expires_at);
+                    document.getElementById('biolink-expires').textContent = 'Permanent (with analytics tracking)';
                     document.getElementById('biolink-result').classList.add('show');
-                    form.reset();
 
-                    // Reset social links container
+                    // Reset form
+                    form.reset();
+                    document.getElementById('profile_image_url').value = '';
+                    document.getElementById('cover_image_url').value = '';
+                    document.getElementById('profile-preview').style.display = 'none';
+                    document.getElementById('cover-preview').style.display = 'none';
+
+                    // Reset links container
                     const container = document.getElementById('social-links-container');
                     container.innerHTML = `
                         <div class="social-link-item">
@@ -1750,6 +1942,8 @@
                                 <option value="fas fa-envelope">📧 Email</option>
                                 <option value="fab fa-whatsapp">💬 WhatsApp</option>
                                 <option value="fab fa-telegram">✈️ Telegram</option>
+                                <option value="fab fa-spotify">🎵 Spotify</option>
+                                <option value="fab fa-twitch">🎮 Twitch</option>
                             </select>
                             <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
                             <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
@@ -1759,7 +1953,7 @@
                         </div>
                     `;
 
-                    addLog(`Bio link created: ${code} 🎉`, 'success');
+                    addLog(`Premium bio link created for @${username}! 🎉`, 'success');
                     updateStats();
                 } else {
                     showError('biolink-error', data.detail || 'Error creating bio link');
@@ -1769,12 +1963,13 @@
                 showError('biolink-error', 'Network error: ' + error.message);
                 addLog(`Network error: ${error.message}`, 'error');
             } finally {
-                submitBtn.innerHTML = '<i class="fas fa-magic"></i><span>Create Bio Link</span>';
+                submitBtn.innerHTML = '<i class="fas fa-magic"></i><span>Create Premium Bio Link</span>';
                 submitBtn.disabled = false;
             }
         }
 
-        function generateBioLinkHTML(name, description, socialLinks) {
+        // generateBioLinkHTML function removed - now using backend template rendering
+        function generateBioLinkHTML_DEPRECATED(name, description, socialLinks) {
             const linksHTML = socialLinks.map(link => `
                 <a href="${link.url}" class="bio-link" target="_blank" rel="noopener noreferrer">
                     <i class="${link.icon}"></i>
