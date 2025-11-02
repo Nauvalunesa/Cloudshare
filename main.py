@@ -329,7 +329,8 @@ def save_uploaded_files():
         k: {
             **v,
             "created_at": v["created_at"].isoformat(),
-            "expires_at": v["expires_at"].isoformat() if v["expires_at"] else None
+            "expires_at": v["expires_at"].isoformat() if v["expires_at"] else None,
+            "last_accessed": v["last_accessed"].isoformat() if v.get("last_accessed") else None
         } for k, v in uploaded_files.items()
     }
     with open(UPLOADED_FILES_FILE, "w") as f:
@@ -342,6 +343,7 @@ def load_uploaded_files():
             for fname, meta in data.items():
                 meta["created_at"] = datetime.fromisoformat(meta["created_at"])
                 meta["expires_at"] = datetime.fromisoformat(meta["expires_at"]) if meta["expires_at"] else None
+                meta["last_accessed"] = datetime.fromisoformat(meta["last_accessed"]) if meta.get("last_accessed") else None
                 uploaded_files[fname] = meta
 
 def save_html_metadata():
