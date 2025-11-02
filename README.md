@@ -87,11 +87,14 @@
 - Expiration dates
 - Raw text export
 
-### 🛡️ **DDoS Protection**
-- Multi-tier rate limiting
-- Automatic IP banning (UFW)
-- Memory-efficient tracking
-- Concurrent upload limits
+### 🛡️ **Enhanced DDoS Protection**
+- **Multi-tier Rate Limiting** - 3 req/sec, 10 req/10sec, ban at 30 req/10sec
+- **Endpoint-Specific Limits** - QR codes (30/min), Images (50/hour)
+- **Resource Creation Limits** - Bio links (5/IP), Snippets (20/IP), HTML (10/IP)
+- **Automatic IP Banning** - UFW firewall integration
+- **Memory Protection** - QR cache limits, bulk download size checks
+- **Disk I/O Optimization** - Batched saves, reduced write operations
+- **Request Body Limits** - 50MB max upload size
 
 ---
 
@@ -296,11 +299,20 @@ export HMAC_KEY="your-hmac-key"
 
 ### DDoS Settings (main.py)
 ```python
+# General Rate Limiting
 MAX_TRACKED_IPS = 10000
-RATE_LIMIT_STRICT = 3
-RATE_LIMIT_BURST = 10
-RATE_LIMIT_BAN = 30
+RATE_LIMIT_STRICT = 3  # requests per second
+RATE_LIMIT_BURST = 10  # requests per 10 seconds
+RATE_LIMIT_BAN = 30  # requests before permanent ban
 MAX_CONCURRENT_UPLOADS_PER_IP = 3
+
+# Endpoint-Specific Limits
+MAX_QR_REQUESTS_PER_MINUTE = 30
+MAX_IMAGE_UPLOADS_PER_HOUR = 50
+MAX_BIOLINKS_PER_IP = 5
+MAX_SNIPPETS_PER_IP = 20
+MAX_HTML_PAGES_PER_IP = 10
+QR_CACHE_MAX_SIZE = 500
 ```
 
 ---

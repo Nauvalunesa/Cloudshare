@@ -39,11 +39,24 @@ RATE_LIMIT_BURST = 10  # requests per 10 seconds
 RATE_LIMIT_BAN = 30  # requests per 10 seconds before permanent ban
 BANNED_IPS_FILE = "banned_ips.json"
 
+# Additional DDoS Protection Limits
+MAX_QR_REQUESTS_PER_MINUTE = 30  # QR code generation limit per IP
+MAX_IMAGE_UPLOADS_PER_HOUR = 50  # Image upload limit per IP
+MAX_BIOLINKS_PER_IP = 5  # Max bio links per IP
+MAX_SNIPPETS_PER_IP = 20  # Max snippets per IP
+MAX_HTML_PAGES_PER_IP = 10  # Max HTML pages per IP
+QR_CACHE_MAX_SIZE = 500  # Reduced QR cache size
+QR_CACHE_CLEANUP_INTERVAL = 3600  # Clean QR cache every hour
+
 ip_request_log = defaultdict(list)
 banned_ips = set()
 active_uploads = defaultdict(int)
 qr_cache = {}
+qr_request_log = defaultdict(list)  # Track QR requests per IP
+image_upload_log = defaultdict(list)  # Track image uploads per IP
+creation_counts = defaultdict(lambda: {"biolinks": 0, "snippets": 0, "html": 0})  # Track resource creation per IP
 last_cleanup_time = time.time()
+last_qr_cache_cleanup = time.time()
 
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", hashlib.sha256(b"cloudshare-secret-key-2025").digest())
 HMAC_KEY = os.getenv("HMAC_KEY", b"cloudshare-hmac-key-2025")
@@ -90,7 +103,7 @@ def save_banned_ips():
 
 def cleanup_old_ips():
     """Clean up old IPs from tracking to prevent memory leak"""
-    global last_cleanup_time
+    global last_cleanup_time, last_qr_cache_cleanup
     now = time.time()
 
     if now - last_cleanup_time < CLEANUP_INTERVAL:
@@ -117,9 +130,59 @@ def cleanup_old_ips():
             del ip_request_log[ip]
             cleaned += 1
 
+    # Clean QR request logs (older than 60 seconds)
+    for ip in list(qr_request_log.keys()):
+        qr_request_log[ip] = [t for t in qr_request_log[ip] if (current_time - t).total_seconds() <= 60]
+        if not qr_request_log[ip]:
+            del qr_request_log[ip]
+
+    # Clean image upload logs (older than 1 hour)
+    for ip in list(image_upload_log.keys()):
+        image_upload_log[ip] = [t for t in image_upload_log[ip] if (current_time - t).total_seconds() <= 3600]
+        if not image_upload_log[ip]:
+            del image_upload_log[ip]
+
+    # Clean QR cache periodically
+    if now - last_qr_cache_cleanup > QR_CACHE_CLEANUP_INTERVAL:
+        if len(qr_cache) > QR_CACHE_MAX_SIZE:
+            # Remove random entries to get below max size
+            excess = len(qr_cache) - QR_CACHE_MAX_SIZE
+            for key in list(qr_cache.keys())[:excess]:
+                del qr_cache[key]
+        last_qr_cache_cleanup = now
+
     last_cleanup_time = now
     if cleaned > 0:
         logger.info(f"Cleaned up {cleaned} IPs from tracking")
+
+def check_qr_rate_limit(ip: str) -> bool:
+    """Check if IP has exceeded QR code generation rate limit"""
+    current_time = datetime.utcnow()
+    qr_request_log[ip] = [t for t in qr_request_log[ip] if (current_time - t).total_seconds() <= 60]
+
+    if len(qr_request_log[ip]) >= MAX_QR_REQUESTS_PER_MINUTE:
+        return False
+
+    qr_request_log[ip].append(current_time)
+    return True
+
+def check_image_upload_limit(ip: str) -> bool:
+    """Check if IP has exceeded image upload limit"""
+    current_time = datetime.utcnow()
+    image_upload_log[ip] = [t for t in image_upload_log[ip] if (current_time - t).total_seconds() <= 3600]
+
+    if len(image_upload_log[ip]) >= MAX_IMAGE_UPLOADS_PER_HOUR:
+        return False
+
+    image_upload_log[ip].append(current_time)
+    return True
+
+def check_creation_limit(ip: str, resource_type: str, max_limit: int) -> bool:
+    """Check if IP has exceeded resource creation limit"""
+    if creation_counts[ip][resource_type] >= max_limit:
+        return False
+    creation_counts[ip][resource_type] += 1
+    return True
 
 def get_real_ip(request: Request) -> str:
     """Extract real IP from request, handling proxies"""
@@ -210,11 +273,14 @@ class AntiDDOSMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
         
         
-# 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="LinkShare Pro", description="URL Shortener & File Sharing API")
+app = FastAPI(
+    title="LinkShare Pro",
+    description="URL Shortener & File Sharing API",
+    max_upload_size=52428800  # 50MB max request body size
+)
 app.add_middleware(AntiDDOSMiddleware)
 
 
@@ -416,11 +482,17 @@ def redirect_short_url(code: str):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/qr/{code}")
-def generate_qr(code: str):
+def generate_qr(code: str, request: Request):
+    client_ip = get_real_ip(request)
+
     # Check cache first to prevent CPU exhaustion
     if code in qr_cache:
         buffer = BytesIO(qr_cache[code])
         return StreamingResponse(buffer, media_type="image/png")
+
+    # Rate limit QR generation per IP
+    if not check_qr_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail=f"Too many QR code requests. Limit: {MAX_QR_REQUESTS_PER_MINUTE}/minute")
 
     if code in short_urls:
         target = f"https://nauval.cloud/s/{code}"
@@ -437,7 +509,7 @@ def generate_qr(code: str):
     qr_data = buffer.getvalue()
 
     # Cache the QR code (limit cache size to prevent memory issues)
-    if len(qr_cache) < 1000:
+    if len(qr_cache) < QR_CACHE_MAX_SIZE:
         qr_cache[code] = qr_data
 
     buffer = BytesIO(qr_data)
@@ -558,11 +630,18 @@ async def download_file(filename: str, password: Optional[str] = None):
             del uploaded_files[filename]
             save_uploaded_files()
             raise HTTPException(status_code=410, detail="File expired")
+        
+        if not data.get("encryption_key"):
+            data["downloads"] = data.get("downloads", 0) + 1
+            data["last_accessed"] = datetime.utcnow()
+            save_uploaded_files()
+            return FileResponse(data["path"], filename=data.get("original_name", filename), media_type='application/octet-stream')
+        
         if data.get("has_password") and not password:
             raise HTTPException(status_code=401, detail="Password required")
         with open(data["path"], "rb") as f:
             encrypted_content = f.read()
-        if not verify_hmac(encrypted_content, data.get("hmac", "")):
+        if data.get("hmac") and not verify_hmac(encrypted_content, data.get("hmac", "")):
             raise HTTPException(status_code=500, detail="File integrity check failed")
         try:
             encrypted_key = base64.b64decode(data["encryption_key"])
@@ -606,6 +685,12 @@ async def upload_html_page(
     code: str = Form(...),
     expire_days: int = Form(...)
 ):
+    client_ip = get_real_ip(request)
+
+    # Rate limit HTML page creation per IP
+    if not check_creation_limit(client_ip, "html", MAX_HTML_PAGES_PER_IP):
+        raise HTTPException(status_code=429, detail=f"Too many HTML pages created. Limit: {MAX_HTML_PAGES_PER_IP} per IP")
+
     if not file.filename.endswith(".html"):
         raise HTTPException(status_code=400, detail="Only .html files allowed")
 
@@ -698,6 +783,7 @@ load_snippets()
 
 @app.post("/snippet")
 async def create_snippet(
+    request: Request,
     code: str = Form(...),
     content: str = Form(...),
     language: str = Form("text"),
@@ -707,6 +793,12 @@ async def create_snippet(
 ):
     """Create a text/code snippet"""
     try:
+        client_ip = get_real_ip(request)
+
+        # Rate limit snippet creation per IP
+        if not check_creation_limit(client_ip, "snippets", MAX_SNIPPETS_PER_IP):
+            raise HTTPException(status_code=429, detail=f"Too many snippets created. Limit: {MAX_SNIPPETS_PER_IP} per IP")
+
         # Validate code
         if not code.replace('-', '').replace('_', '').isalnum() or len(code) < 3 or len(code) > 30:
             raise HTTPException(status_code=400, detail="Code must be alphanumeric (3-30 chars)")
@@ -796,17 +888,30 @@ async def view_snippet_raw(code: str, password: Optional[str] = None):
     return HTMLResponse(content=snippet["content"], media_type="text/plain")
 
 @app.get("/stats")
-def get_stats():
+def get_stats(request: Request, admin_token: Optional[str] = None):
     try:
-        return {
+        client_ip = get_real_ip(request)
+
+        # Basic stats available to everyone (rate limited)
+        basic_stats = {
             "total_urls": len(short_urls),
             "total_files": len(uploaded_files),
-            "total_html_pages": len(html_pages),
             "total_snippets": len(text_snippets),
-            "total_biolinks": len(biolinks),
-            "storage_dir": STORAGE_DIR,
-            "html_dir": HTML_STORAGE_DIR
+            "total_biolinks": len(biolinks)
         }
+
+        # Extended stats only with admin token
+        if admin_token == os.getenv("ADMIN_TOKEN"):
+            basic_stats.update({
+                "total_html_pages": len(html_pages),
+                "storage_dir": STORAGE_DIR,
+                "html_dir": HTML_STORAGE_DIR,
+                "banned_ips_count": len(banned_ips),
+                "tracked_ips": len(ip_request_log),
+                "qr_cache_size": len(qr_cache)
+            })
+
+        return basic_stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -819,6 +924,10 @@ async def upload_image(
     """Upload and optimize images for bio links (profile, cover, etc.)"""
     try:
         client_ip = get_real_ip(request)
+
+        # Rate limit image uploads per IP
+        if not check_image_upload_limit(client_ip):
+            raise HTTPException(status_code=429, detail=f"Too many image uploads. Limit: {MAX_IMAGE_UPLOADS_PER_HOUR}/hour")
 
         # Validate file type
         if not file.content_type or not file.content_type.startswith('image/'):
@@ -915,6 +1024,12 @@ async def create_biolink(
 ):
     """Create a premium bio link page"""
     try:
+        client_ip = get_real_ip(request)
+
+        # Rate limit bio link creation per IP
+        if not check_creation_limit(client_ip, "biolinks", MAX_BIOLINKS_PER_IP):
+            raise HTTPException(status_code=429, detail=f"Too many bio links created. Limit: {MAX_BIOLINKS_PER_IP} per IP")
+
         # Validate username
         if not username.replace('-', '').replace('_', '').isalnum() or len(username) < 3 or len(username) > 30:
             raise HTTPException(status_code=400, detail="Username must be alphanumeric (3-30 chars)")
@@ -973,9 +1088,12 @@ async def view_biolink(username: str):
     if not biolink:
         raise HTTPException(status_code=404, detail="Bio link not found")
 
-    # Increment view counter
+    # Increment view counter (save is handled periodically to reduce disk I/O)
     biolink["views"] = biolink.get("views", 0) + 1
-    save_biolinks()
+
+    # Only save to disk every 10 views to reduce I/O (DoS mitigation)
+    if biolink["views"] % 10 == 0:
+        save_biolinks()
 
     return FileResponse("biolink_viewer.html")
 
@@ -1070,6 +1188,17 @@ async def bulk_download(codes: str, password: Optional[str] = None):
         file_codes = [c.strip() for c in codes.split(',') if c.strip()]
         if len(file_codes) > 20:
             raise HTTPException(status_code=400, detail="Maximum 20 files")
+
+        # Calculate total size before creating ZIP to prevent memory exhaustion
+        total_size = 0
+        max_bulk_size = 200 * 1024 * 1024  # 200MB max for bulk download
+        for code in file_codes:
+            data = uploaded_files.get(code)
+            if data and os.path.exists(data["path"]):
+                total_size += data.get("size", 0)
+                if total_size > max_bulk_size:
+                    raise HTTPException(status_code=400, detail=f"Total file size exceeds {max_bulk_size // (1024*1024)}MB limit")
+
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for code in file_codes:
@@ -1078,6 +1207,14 @@ async def bulk_download(codes: str, password: Optional[str] = None):
                     try:
                         with open(data["path"], "rb") as f:
                             encrypted_content = f.read()
+
+                        # Skip if file has no encryption key (legacy file)
+                        if not data.get("encryption_key"):
+                            with open(data["path"], "rb") as f:
+                                file_content = f.read()
+                            zip_file.writestr(data.get("original_name", code), file_content)
+                            continue
+
                         encrypted_key = base64.b64decode(data["encryption_key"])
                         if data.get("has_password"):
                             if not password:
