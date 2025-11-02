@@ -689,12 +689,29 @@
             display: flex;
             gap: 1rem;
             margin-bottom: 1rem;
-            align-items: center;
+            align-items: stretch;
             animation: fadeInUp 0.3s ease;
+            flex-wrap: wrap;
         }
 
         .social-icon-select {
-            width: 120px;
+            min-width: 140px;
+            flex: 0 0 auto;
+        }
+
+        .social-link-item .form-input {
+            min-width: 0;
+        }
+
+        /* Desktop: proportional input widths */
+        @media (min-width: 768px) {
+            .link-title-input {
+                flex: 1;
+            }
+
+            .link-url-input {
+                flex: 2;
+            }
         }
 
         .remove-link-btn {
@@ -851,6 +868,95 @@
         }
 
         /* ===== RESPONSIVE ===== */
+        /* Mobile First - Default untuk mobile */
+        @media (max-width: 767px) {
+            /* Simplify animations untuk performance */
+            .animated-bg {
+                animation: none;
+                opacity: 0.03;
+            }
+
+            .particle {
+                display: none;
+            }
+
+            /* Header lebih compact */
+            .header {
+                padding: 2rem 0 2.5rem 0;
+            }
+
+            .logo {
+                font-size: 2.5rem;
+            }
+
+            .tagline {
+                font-size: 1rem;
+            }
+
+            .stats-container {
+                gap: 1.5rem;
+            }
+
+            .stat-number {
+                font-size: 1.75rem;
+            }
+
+            /* Bio Link Form - STACK VERTICAL DI MOBILE */
+            .social-link-item {
+                flex-direction: column;
+                gap: 0.75rem;
+                background: var(--bg-secondary);
+                padding: 1rem;
+                border-radius: var(--radius);
+            }
+
+            .social-icon-select {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .social-link-item .form-input {
+                width: 100%;
+            }
+
+            .remove-link-btn {
+                width: 100%;
+                padding: 0.75rem;
+            }
+
+            /* Theme selector lebih compact */
+            .theme-preview {
+                height: 60px;
+            }
+
+            /* Form rows stack di mobile */
+            .form-row {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Service cards */
+            .service-card {
+                padding: 1.5rem;
+            }
+
+            .service-title {
+                font-size: 1.5rem;
+            }
+
+            /* Buttons full width di mobile */
+            .btn {
+                width: 100%;
+                padding: 1rem;
+            }
+
+            /* Console log lebih compact */
+            .console-log {
+                max-height: 300px;
+                padding: 1.5rem;
+            }
+        }
+
+        /* Tablet & Desktop */
         @media (min-width: 768px) {
             .services-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -1332,8 +1438,8 @@
                                         <option value="fab fa-spotify">🎵 Spotify</option>
                                         <option value="fab fa-twitch">🎮 Twitch</option>
                                     </select>
-                                    <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
-                                    <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
+                                    <input type="text" class="form-input link-title-input" placeholder="Link title">
+                                    <input type="url" class="form-input link-url-input" placeholder="https://...">
                                     <button type="button" class="remove-link-btn" onclick="removeSocialLink(this)" style="display: none;">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -1468,13 +1574,18 @@
 
         // ===== FLOATING PARTICLES =====
         function createParticles() {
+            // Skip particles di mobile untuk performance
+            if (window.innerWidth < 768) return;
+
             const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c'];
-            for (let i = 0; i < 5; i++) {
+            const particleCount = window.innerWidth > 1200 ? 5 : 3; // Fewer on smaller screens
+
+            for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 particle.style.cssText = `
-                    width: ${Math.random() * 100 + 50}px;
-                    height: ${Math.random() * 100 + 50}px;
+                    width: ${Math.random() * 80 + 40}px;
+                    height: ${Math.random() * 80 + 40}px;
                     background: ${colors[Math.floor(Math.random() * colors.length)]};
                     left: ${Math.random() * 100}%;
                     top: ${Math.random() * 100}%;
@@ -1833,8 +1944,8 @@
                     <option value="fab fa-spotify">🎵 Spotify</option>
                     <option value="fab fa-twitch">🎮 Twitch</option>
                 </select>
-                <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
-                <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
+                <input type="text" class="form-input link-title-input" placeholder="Link title">
+                <input type="url" class="form-input link-url-input" placeholder="https://...">
                 <button type="button" class="remove-link-btn" onclick="removeSocialLink(this)">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -1945,8 +2056,8 @@
                                 <option value="fab fa-spotify">🎵 Spotify</option>
                                 <option value="fab fa-twitch">🎮 Twitch</option>
                             </select>
-                            <input type="text" class="form-input" placeholder="Link title" style="flex: 1;">
-                            <input type="url" class="form-input" placeholder="https://..." style="flex: 2;">
+                            <input type="text" class="form-input link-title-input" placeholder="Link title">
+                            <input type="url" class="form-input link-url-input" placeholder="https://...">
                             <button type="button" class="remove-link-btn" onclick="removeSocialLink(this)" style="display: none;">
                                 <i class="fas fa-trash"></i>
                             </button>
