@@ -325,26 +325,83 @@ def load_short_urls():
                 short_urls[code] = val
 
 def save_uploaded_files():
-    serializable = {
-        k: {
-            **v,
-            "created_at": v["created_at"].isoformat(),
-            "expires_at": v["expires_at"].isoformat() if v["expires_at"] else None,
-            "last_accessed": v["last_accessed"].isoformat() if v.get("last_accessed") else None
-        } for k, v in uploaded_files.items()
-    }
-    with open(UPLOADED_FILES_FILE, "w") as f:
-        json.dump(serializable, f, indent=2)
+    try:
+        serializable = {
+            k: {
+                **v,
+                "created_at": v["created_at"].isoformat() if isinstance(v.get("created_at"), datetime) else v.get("created_at"),
+                "expires_at": v["expires_at"].isoformat() if isinstance(v.get("expires_at"), datetime) else v.get("expires_at"),
+                "last_accessed": v["last_accessed"].isoformat() if isinstance(v.get("last_accessed"), datetime) else v.get("last_accessed")
+            } for k, v in uploaded_files.items()
+        }
+
+        # Create backup before saving
+        if os.path.exists(UPLOADED_FILES_FILE):
+            backup_file = f"{UPLOADED_FILES_FILE}.backup"
+            shutil.copy2(UPLOADED_FILES_FILE, backup_file)
+
+        # Write to temp file first, then rename (atomic operation)
+        temp_file = f"{UPLOADED_FILES_FILE}.tmp"
+        with open(temp_file, "w") as f:
+            json.dump(serializable, f, indent=2)
+
+        # Rename temp file to actual file (atomic on Unix)
+        os.replace(temp_file, UPLOADED_FILES_FILE)
+
+    except Exception as e:
+        logger.error(f"Error saving uploaded files: {e}")
+        # Don't crash the app, just log the error
 
 def load_uploaded_files():
-    if os.path.exists(UPLOADED_FILES_FILE):
-        with open(UPLOADED_FILES_FILE, "r") as f:
-            data = json.load(f)
+    """Load uploaded files with robust error handling and backup recovery"""
+    files_to_try = [UPLOADED_FILES_FILE, f"{UPLOADED_FILES_FILE}.backup"]
+
+    for file_path in files_to_try:
+        if not os.path.exists(file_path):
+            continue
+
+        try:
+            with open(file_path, "r") as f:
+                data = json.load(f)
+
+            # Successfully loaded, now parse the data
             for fname, meta in data.items():
-                meta["created_at"] = datetime.fromisoformat(meta["created_at"])
-                meta["expires_at"] = datetime.fromisoformat(meta["expires_at"]) if meta["expires_at"] else None
-                meta["last_accessed"] = datetime.fromisoformat(meta["last_accessed"]) if meta.get("last_accessed") else None
-                uploaded_files[fname] = meta
+                try:
+                    # Handle datetime parsing with fallback
+                    if meta.get("created_at"):
+                        meta["created_at"] = datetime.fromisoformat(meta["created_at"]) if isinstance(meta["created_at"], str) else meta["created_at"]
+
+                    if meta.get("expires_at"):
+                        meta["expires_at"] = datetime.fromisoformat(meta["expires_at"]) if isinstance(meta["expires_at"], str) else meta["expires_at"]
+
+                    if meta.get("last_accessed"):
+                        meta["last_accessed"] = datetime.fromisoformat(meta["last_accessed"]) if isinstance(meta["last_accessed"], str) else None
+
+                    uploaded_files[fname] = meta
+                except Exception as e:
+                    logger.error(f"Error parsing file metadata for {fname}: {e}")
+                    # Skip this file entry but continue with others
+                    continue
+
+            logger.info(f"Successfully loaded {len(uploaded_files)} uploaded files from {file_path}")
+            return  # Successfully loaded, exit function
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error in {file_path}: {e}")
+            if file_path == UPLOADED_FILES_FILE:
+                logger.info("Attempting to load from backup...")
+                continue  # Try backup file
+            else:
+                logger.error("Backup file also corrupt, starting fresh")
+                break
+
+        except Exception as e:
+            logger.error(f"Error loading uploaded files from {file_path}: {e}")
+            continue
+
+    # If we get here, no files could be loaded
+    logger.warning("Could not load uploaded files, starting with empty database")
+    uploaded_files.clear()
 
 def save_html_metadata():
     serializable = {
