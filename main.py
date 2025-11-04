@@ -554,6 +554,19 @@ def index(request: Request):
         logger.error(f"Error reading index.html: {str(e)}")
         return HTMLResponse("<h1>403</h1>")
 
+@app.get("/advanced.html", response_class=HTMLResponse)
+def advanced_page(request: Request):
+    if not is_browser_request(request):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        with open("advanced.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return HTMLResponse("<h1>403</h1>")
+    except Exception as e:
+        logger.error(f"Error reading advanced.html: {str(e)}")
+        return HTMLResponse("<h1>403</h1>")
+
 @app.post("/shorten")
 def shorten_url(original_url: str = Form(...), custom_alias: Optional[str] = Form(None), expires_in_minutes: Optional[int] = Form(None)):
     try:
