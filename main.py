@@ -653,7 +653,7 @@ def get_upload_progress(upload_id: str):
     return upload_progress.get(upload_id, {"progress": 0, "speed": 0, "status": "not_found"})
 
 @app.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...), filename: Optional[str] = Form(None), password: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None), upload_id: Optional[str] = Form(None)):
+async def upload_file(request: Request, file: UploadFile = File(...), filename: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None), upload_id: Optional[str] = Form(None)):
     try:
         client_ip = get_real_ip(request)
         if active_uploads[client_ip] >= MAX_CONCURRENT_UPLOADS_PER_IP:
@@ -679,12 +679,6 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
         cipher = AES.new(file_key, AES.MODE_GCM, nonce=nonce)
         ciphertext, tag = cipher.encrypt_and_digest(file_content)
         encrypted_content = nonce + tag + ciphertext
-        encrypted_key = file_key
-        if password:
-            password_hash = hashlib.sha256(password.encode()).digest()
-            key_cipher = AES.new(password_hash, AES.MODE_GCM)
-            key_ciphertext, key_tag = key_cipher.encrypt_and_digest(file_key)
-            encrypted_key = key_cipher.nonce + key_tag + key_ciphertext
         file_hmac = compute_hmac(encrypted_content)
         ext = os.path.splitext(file.filename)[1]
         name = filename.strip() if filename else generate_code()
@@ -710,8 +704,7 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
             "size": file_size,
             "encrypted_size": len(encrypted_content),
             "created_at": datetime.utcnow(),
-            "encryption_key": base64.b64encode(encrypted_key).decode(),
-            "has_password": password is not None,
+            "encryption_key": base64.b64encode(file_key).decode(),
             "hmac": file_hmac,
             "downloads": 0
         }
@@ -752,7 +745,7 @@ async def cleanup_progress(upload_id: str):
     upload_progress.pop(upload_id, None)
 
 @app.get("/download/{filename}")
-async def download_file(filename: str, password: Optional[str] = None):
+async def download_file(filename: str):
     try:
         data = uploaded_files.get(filename)
         if not data:
@@ -767,32 +760,19 @@ async def download_file(filename: str, password: Optional[str] = None):
             del uploaded_files[filename]
             save_uploaded_files()
             raise HTTPException(status_code=410, detail="File expired")
-        
+
         if not data.get("encryption_key"):
             data["downloads"] = data.get("downloads", 0) + 1
             data["last_accessed"] = datetime.utcnow()
             save_uploaded_files()
             return FileResponse(data["path"], filename=data.get("original_name", filename), media_type='application/octet-stream')
-        
-        if data.get("has_password") and not password:
-            raise HTTPException(status_code=401, detail="Password required")
+
         with open(data["path"], "rb") as f:
             encrypted_content = f.read()
         if data.get("hmac") and not verify_hmac(encrypted_content, data.get("hmac", "")):
             raise HTTPException(status_code=500, detail="File integrity check failed")
         try:
-            encrypted_key = base64.b64decode(data["encryption_key"])
-            if data.get("has_password"):
-                if not password:
-                    raise HTTPException(status_code=401, detail="Password required")
-                password_hash = hashlib.sha256(password.encode()).digest()
-                key_nonce = encrypted_key[:12]
-                key_tag = encrypted_key[12:28]
-                key_ciphertext = encrypted_key[28:]
-                key_cipher = AES.new(password_hash, AES.MODE_GCM, nonce=key_nonce)
-                file_key = key_cipher.decrypt_and_verify(key_ciphertext, key_tag)
-            else:
-                file_key = encrypted_key
+            file_key = base64.b64decode(data["encryption_key"])
             nonce = encrypted_content[:12]
             tag = encrypted_content[12:28]
             ciphertext = encrypted_content[28:]
@@ -800,7 +780,7 @@ async def download_file(filename: str, password: Optional[str] = None):
             file_content = cipher.decrypt_and_verify(ciphertext, tag)
         except Exception as e:
             logger.error(f"Decryption error: {e}")
-            raise HTTPException(status_code=401, detail="Invalid password or corrupted file")
+            raise HTTPException(status_code=500, detail="Corrupted file")
         data["downloads"] = data.get("downloads", 0) + 1
         data["last_accessed"] = datetime.utcnow()
         save_uploaded_files()
@@ -1274,7 +1254,7 @@ async def track_click(username: str, link_id: str = Form(...)):
     return {"success": True}
 
 @app.post("/upload/bulk")
-async def bulk_upload(request: Request, files: List[UploadFile] = File(...), password: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None)):
+async def bulk_upload(request: Request, files: List[UploadFile] = File(...), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None)):
     try:
         if len(files) > 20:
             raise HTTPException(status_code=400, detail="Maximum 20 files per bulk upload")
@@ -1290,12 +1270,6 @@ async def bulk_upload(request: Request, files: List[UploadFile] = File(...), pas
                 cipher = AES.new(file_key, AES.MODE_GCM, nonce=nonce)
                 ciphertext, tag = cipher.encrypt_and_digest(file_content)
                 encrypted_content = nonce + tag + ciphertext
-                encrypted_key = file_key
-                if password:
-                    password_hash = hashlib.sha256(password.encode()).digest()
-                    key_cipher = AES.new(password_hash, AES.MODE_GCM)
-                    key_ciphertext, key_tag = key_cipher.encrypt_and_digest(file_key)
-                    encrypted_key = key_cipher.nonce + key_tag + key_ciphertext
                 file_hmac = compute_hmac(encrypted_content)
                 ext = os.path.splitext(file.filename)[1]
                 final_name = f"{generate_code()}{ext}"
@@ -1310,8 +1284,7 @@ async def bulk_upload(request: Request, files: List[UploadFile] = File(...), pas
                     "original_name": file.filename,
                     "size": len(file_content),
                     "created_at": datetime.utcnow(),
-                    "encryption_key": base64.b64encode(encrypted_key).decode(),
-                    "has_password": password is not None,
+                    "encryption_key": base64.b64encode(file_key).decode(),
                     "hmac": file_hmac,
                     "downloads": 0
                 }
@@ -1325,7 +1298,7 @@ async def bulk_upload(request: Request, files: List[UploadFile] = File(...), pas
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/download/bulk")
-async def bulk_download(codes: str, password: Optional[str] = None):
+async def bulk_download(codes: str):
     try:
         file_codes = [c.strip() for c in codes.split(',') if c.strip()]
         if len(file_codes) > 20:
@@ -1357,18 +1330,7 @@ async def bulk_download(codes: str, password: Optional[str] = None):
                             zip_file.writestr(data.get("original_name", code), file_content)
                             continue
 
-                        encrypted_key = base64.b64decode(data["encryption_key"])
-                        if data.get("has_password"):
-                            if not password:
-                                continue
-                            password_hash = hashlib.sha256(password.encode()).digest()
-                            key_nonce = encrypted_key[:12]
-                            key_tag = encrypted_key[12:28]
-                            key_ciphertext = encrypted_key[28:]
-                            key_cipher = AES.new(password_hash, AES.MODE_GCM, nonce=key_nonce)
-                            file_key = key_cipher.decrypt_and_verify(key_ciphertext, key_tag)
-                        else:
-                            file_key = encrypted_key
+                        file_key = base64.b64decode(data["encryption_key"])
                         nonce = encrypted_content[:12]
                         tag = encrypted_content[12:28]
                         ciphertext = encrypted_content[28:]
@@ -1396,8 +1358,7 @@ async def get_file_stats(filename: str):
             "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
             "downloads": data.get("downloads", 0),
             "last_accessed": data.get("last_accessed").isoformat() if data.get("last_accessed") else None,
-            "encrypted": True,
-            "has_password": data.get("has_password", False)
+            "encrypted": True
         }
     except HTTPException:
         raise
