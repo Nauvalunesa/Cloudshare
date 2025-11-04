@@ -201,6 +201,15 @@ def get_real_ip(request: Request) -> str:
 
 def is_browser_request(request: Request) -> bool:
     user_agent = request.headers.get("User-Agent", "").lower()
+    accept = request.headers.get("Accept", "").lower()
+    sec_fetch_site = request.headers.get("Sec-Fetch-Site", "")
+    sec_fetch_mode = request.headers.get("Sec-Fetch-Mode", "")
+    sec_fetch_dest = request.headers.get("Sec-Fetch-Dest", "")
+    accept_language = request.headers.get("Accept-Language", "")
+    accept_encoding = request.headers.get("Accept-Encoding", "")
+    upgrade_insecure = request.headers.get("Upgrade-Insecure-Requests", "")
+
+    score = 0
 
     if not user_agent:
         return False
@@ -221,11 +230,35 @@ def is_browser_request(request: Request) -> bool:
         'msie', 'trident', 'webkit', 'gecko', 'applewebkit'
     ]
 
+    has_browser_ua = False
     for pattern in browser_patterns:
         if pattern in user_agent:
-            return True
+            has_browser_ua = True
+            score += 1
+            break
 
-    return False
+    if not has_browser_ua:
+        return False
+
+    if 'text/html' in accept:
+        score += 2
+
+    if accept_language:
+        score += 1
+
+    if 'gzip' in accept_encoding or 'deflate' in accept_encoding:
+        score += 1
+
+    if sec_fetch_site or sec_fetch_mode or sec_fetch_dest:
+        score += 2
+
+    if upgrade_insecure == "1":
+        score += 1
+
+    if len(user_agent) > 50:
+        score += 1
+
+    return score >= 4
 
 def ban_ip_via_firewall(ip: str) -> bool:
 
