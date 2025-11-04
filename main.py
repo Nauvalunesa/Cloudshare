@@ -676,12 +676,14 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
         ext = os.path.splitext(file.filename)[1]
         name = filename.strip() if filename else generate_code()
         name = "".join(c for c in name if c.isalnum() or c in ('-', '_')).rstrip()
-        final_name = f"{name}{ext}.enc"
-        path = os.path.join(STORAGE_DIR, final_name)
+        final_name = f"{name}{ext}"
+        internal_name = f"{final_name}.enc"
+        path = os.path.join(STORAGE_DIR, internal_name)
         counter = 1
         while os.path.exists(path):
-            final_name = f"{name}_{counter}{ext}.enc"
-            path = os.path.join(STORAGE_DIR, final_name)
+            final_name = f"{name}_{counter}{ext}"
+            internal_name = f"{final_name}.enc"
+            path = os.path.join(STORAGE_DIR, internal_name)
             counter += 1
         with open(path, "wb") as buffer:
             buffer.write(encrypted_content)
@@ -740,6 +742,8 @@ async def cleanup_progress(upload_id: str):
 async def download_file(filename: str, password: Optional[str] = None):
     try:
         data = uploaded_files.get(filename)
+        if not data:
+            data = uploaded_files.get(f"{filename}.enc")
         if not data or not os.path.exists(data["path"]):
             raise HTTPException(status_code=404, detail="File not found")
         if data["expires_at"] and datetime.utcnow() > data["expires_at"]:
@@ -1281,8 +1285,9 @@ async def bulk_upload(request: Request, files: List[UploadFile] = File(...), pas
                     encrypted_key = key_cipher.nonce + key_tag + key_ciphertext
                 file_hmac = compute_hmac(encrypted_content)
                 ext = os.path.splitext(file.filename)[1]
-                final_name = f"{generate_code()}{ext}.enc"
-                path = os.path.join(STORAGE_DIR, final_name)
+                final_name = f"{generate_code()}{ext}"
+                internal_name = f"{final_name}.enc"
+                path = os.path.join(STORAGE_DIR, internal_name)
                 with open(path, "wb") as buffer:
                     buffer.write(encrypted_content)
                 expires_at = calculate_expiry(expire_value, expire_unit)
