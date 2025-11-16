@@ -1,2 +1,7 @@
-fastapi
-uvicorn
+fastapi==0.121.2
+uvicorn==0.38.0
+pillow==12.0.0
+pycryptodome==3.23.0
+qrcode==8.2
+python-multipart==0.0.20
+paramiko==4.0.0
