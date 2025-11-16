@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SFTP Manager - CloudShare</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.5/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.5/ext-language_tools.js"></script>
     <style>
         * {
             margin: 0;
@@ -370,8 +372,11 @@
                 </div>
             </div>
 
-            <div class="breadcrumb" id="sftp-breadcrumb">
-                Not connected
+            <div class="breadcrumb" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button class="icon-btn" onclick="goUpFolder()" id="up-btn" title="Go up" style="display: none;">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+                <span id="sftp-breadcrumb">Not connected</span>
             </div>
 
             <div class="file-list" id="sftp-list">
@@ -456,7 +461,7 @@
                 </button>
             </div>
             <div class="form-group" style="margin-bottom: 1rem;">
-                <textarea id="file-content" style="width: 100%; height: 500px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; resize: vertical; padding: 1rem;"></textarea>
+                <div id="file-content" style="width: 100%; height: 500px; border: 1px solid var(--border-color); border-radius: 8px;"></div>
             </div>
             <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                 <button class="btn btn-secondary" onclick="closeModal('editor-modal')">
@@ -482,6 +487,7 @@
         let sftpFiles = [];
         let isConnected = false;
         let currentEditingFile = null;
+        let aceEditor = null;
 
         // Check SFTP status on load
         document.addEventListener('DOMContentLoaded', async function() {
@@ -680,6 +686,14 @@
                 renderSFTP();
                 document.getElementById('sftp-breadcrumb').textContent = sftpPath;
 
+                // Show/hide up button
+                const upBtn = document.getElementById('up-btn');
+                if (sftpPath !== '/' && sftpPath !== '') {
+                    upBtn.style.display = 'flex';
+                } else {
+                    upBtn.style.display = 'none';
+                }
+
             } catch (error) {
                 showToast('Error loading SFTP: ' + error.message);
             }
@@ -701,7 +715,7 @@
                 const isTextFile = !isDir && isEditableFile(file.name);
 
                 html += `
-                    <div class="file-item" ${isDir ? `ondblclick="loadSFTP('${file.path}')"` : ''}>
+                    <div class="file-item" ${isDir ? `onclick="loadSFTP('${file.path}')" style="cursor: pointer;"` : ''}>
                         <div class="file-icon ${iconClass}">
                             <i class="fas ${icon}"></i>
                         </div>
@@ -709,9 +723,9 @@
                             <div class="file-name">${file.name}</div>
                             <div class="file-meta">${isDir ? 'Folder' : formatFileSize(file.size)} • ${file.permissions}</div>
                         </div>
-                        ${isTextFile ? `<button class="icon-btn" onclick="openEditor('${file.path}', '${file.name}')" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
-                        ${!isDir ? `<button class="icon-btn" onclick="downloadFromSFTP('${file.path}', '${file.name}')" title="Download"><i class="fas fa-download"></i></button>` : ''}
-                        <button class="icon-btn" onclick="deleteSFTP('${file.path}')" title="Delete"><i class="fas fa-trash"></i></button>
+                        ${isTextFile ? `<button class="icon-btn" onclick="event.stopPropagation(); openEditor('${file.path}', '${file.name}')" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
+                        ${!isDir ? `<button class="icon-btn" onclick="event.stopPropagation(); downloadFromSFTP('${file.path}', '${file.name}')" title="Download"><i class="fas fa-download"></i></button>` : ''}
+                        <button class="icon-btn" onclick="event.stopPropagation(); deleteSFTP('${file.path}')" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 `;
             });
@@ -729,6 +743,14 @@
 
         function refreshSFTP() {
             loadSFTP(sftpPath);
+        }
+
+        function goUpFolder() {
+            if (sftpPath === '/' || sftpPath === '') return;
+
+            // Get parent directory
+            const parentPath = sftpPath.substring(0, sftpPath.lastIndexOf('/'));
+            loadSFTP(parentPath || '/');
         }
 
         async function uploadToSFTP(filename) {
@@ -841,8 +863,27 @@
                 currentEditingFile = path;
 
                 document.getElementById('editor-filename').textContent = 'Edit: ' + filename;
-                document.getElementById('file-content').value = data.content;
                 document.getElementById('editor-modal').classList.add('show');
+
+                // Initialize Ace Editor if not already done
+                if (!aceEditor) {
+                    aceEditor = ace.edit("file-content");
+                    aceEditor.setTheme("ace/theme/monokai");
+                    aceEditor.setOptions({
+                        fontSize: "14px",
+                        showPrintMargin: false,
+                        enableBasicAutocompletion: true,
+                        enableLiveAutocompletion: true
+                    });
+                }
+
+                // Set syntax mode based on file extension
+                const ext = filename.split('.').pop().toLowerCase();
+                const mode = getAceMode(ext);
+                aceEditor.session.setMode(mode);
+
+                // Set file content
+                aceEditor.setValue(data.content, -1);
 
                 showToast('✅ File loaded');
 
@@ -855,7 +896,7 @@
             if (!currentEditingFile) return;
 
             try {
-                const content = document.getElementById('file-content').value;
+                const content = aceEditor ? aceEditor.getValue() : '';
 
                 showToast('💾 Saving file...');
 
@@ -880,6 +921,44 @@
             } catch (error) {
                 showToast('❌ Save failed: ' + error.message);
             }
+        }
+
+        function getAceMode(ext) {
+            const modeMap = {
+                'js': 'ace/mode/javascript',
+                'jsx': 'ace/mode/javascript',
+                'ts': 'ace/mode/typescript',
+                'tsx': 'ace/mode/typescript',
+                'py': 'ace/mode/python',
+                'php': 'ace/mode/php',
+                'java': 'ace/mode/java',
+                'c': 'ace/mode/c_cpp',
+                'cpp': 'ace/mode/c_cpp',
+                'h': 'ace/mode/c_cpp',
+                'hpp': 'ace/mode/c_cpp',
+                'go': 'ace/mode/golang',
+                'rs': 'ace/mode/rust',
+                'rb': 'ace/mode/ruby',
+                'pl': 'ace/mode/perl',
+                'lua': 'ace/mode/lua',
+                'html': 'ace/mode/html',
+                'css': 'ace/mode/css',
+                'json': 'ace/mode/json',
+                'xml': 'ace/mode/xml',
+                'md': 'ace/mode/markdown',
+                'yml': 'ace/mode/yaml',
+                'yaml': 'ace/mode/yaml',
+                'sh': 'ace/mode/sh',
+                'bash': 'ace/mode/sh',
+                'sql': 'ace/mode/sql',
+                'conf': 'ace/mode/text',
+                'cfg': 'ace/mode/ini',
+                'ini': 'ace/mode/ini',
+                'log': 'ace/mode/text',
+                'txt': 'ace/mode/text'
+            };
+
+            return modeMap[ext] || 'ace/mode/text';
         }
 
         function closeModal(id) {
