@@ -1388,8 +1388,6 @@ async def drive_dashboard():
 @app.get("/api/files/list")
 async def list_files(request: Request):
     """List all uploaded files"""
-    await rate_limit_check(request, "list_files", max_requests=60, window_seconds=60)
-
     try:
         files_list = []
         for filename, data in uploaded_files.items():
@@ -1416,8 +1414,6 @@ async def list_files(request: Request):
 @app.delete("/api/files/delete/{filename}")
 async def delete_file(filename: str, request: Request):
     """Delete a file"""
-    await rate_limit_check(request, "delete_file", max_requests=30, window_seconds=60)
-
     try:
         if filename not in uploaded_files:
             raise HTTPException(status_code=404, detail="File not found")
@@ -1445,8 +1441,6 @@ async def delete_file(filename: str, request: Request):
 @app.post("/api/files/rename/{filename}")
 async def rename_file(filename: str, request: Request):
     """Rename a file"""
-    await rate_limit_check(request, "rename_file", max_requests=30, window_seconds=60)
-
     try:
         # Get new name from JSON body
         body = await request.json()
@@ -1491,8 +1485,6 @@ async def rename_file(filename: str, request: Request):
 @app.get("/api/files/stats")
 async def get_storage_stats(request: Request):
     """Get storage statistics"""
-    await rate_limit_check(request, "storage_stats", max_requests=60, window_seconds=60)
-
     try:
         total_size = 0
         total_files = len(uploaded_files)
@@ -1513,8 +1505,6 @@ async def get_storage_stats(request: Request):
 @app.get("/api/files/search")
 async def search_files(q: str, request: Request):
     """Search files by name"""
-    await rate_limit_check(request, "search_files", max_requests=60, window_seconds=60)
-
     try:
         query = q.lower()
         results = []
