@@ -29,6 +29,9 @@ import secrets
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 import zipfile
+import paramiko
+import stat
+from paramiko import SSHClient, AutoAddPolicy
 
 
 MAX_TRACKED_IPS = 10000
@@ -2031,3 +2034,262 @@ async def create_directory(request: Request, path: str = Form(...), name: str = 
 async def file_manager_page():
     """Serve the dual-panel file manager (admin only)"""
     return FileResponse("filemanager.html")
+
+
+# ===== SFTP CLIENT =====
+
+# Store active SFTP connections per session
+sftp_connections = {}
+
+@app.post("/api/sftp/connect")
+async def sftp_connect(
+    request: Request,
+    host: str = Form(...),
+    port: int = Form(22),
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    """Connect to SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        # Close existing connection if any
+        if session_id in sftp_connections:
+            try:
+                sftp_connections[session_id]['sftp'].close()
+                sftp_connections[session_id]['ssh'].close()
+            except:
+                pass
+
+        # Create new connection
+        ssh = SSHClient()
+        ssh.set_missing_host_key_policy(AutoAddPolicy())
+
+        ssh.connect(
+            hostname=host,
+            port=port,
+            username=username,
+            password=password,
+            timeout=10
+        )
+
+        sftp = ssh.open_sftp()
+
+        # Store connection
+        sftp_connections[session_id] = {
+            'ssh': ssh,
+            'sftp': sftp,
+            'host': host,
+            'username': username
+        }
+
+        # Get home directory
+        try:
+            home_dir = sftp.normalize('.')
+        except:
+            home_dir = '/'
+
+        return {
+            "success": True,
+            "message": f"Connected to {host}",
+            "home_dir": home_dir
+        }
+
+    except Exception as e:
+        logger.error(f"SFTP connection error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sftp/list")
+async def sftp_list_directory(path: str = "/", request: Request = None):
+    """List files in SFTP directory"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        items = []
+        for attr in sftp.listdir_attr(path):
+            is_dir = stat.S_ISDIR(attr.st_mode)
+            items.append({
+                "name": attr.filename,
+                "path": os.path.join(path, attr.filename),
+                "is_dir": is_dir,
+                "size": attr.st_size if not is_dir else 0,
+                "modified": datetime.fromtimestamp(attr.st_mtime).isoformat() if attr.st_mtime else None,
+                "permissions": oct(attr.st_mode)[-3:] if attr.st_mode else "000"
+            })
+
+        # Sort: directories first, then files
+        items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+
+        return {
+            "current_path": path,
+            "parent_path": os.path.dirname(path) if path != "/" else None,
+            "items": items,
+            "total": len(items)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"SFTP list error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/upload")
+async def sftp_upload_file(
+    request: Request,
+    remote_path: str = Form(...),
+    file: UploadFile = File(...)
+):
+    """Upload file to SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Read file content
+        file_content = await file.read()
+
+        # Write to SFTP
+        with sftp.open(remote_path, 'wb') as remote_file:
+            remote_file.write(file_content)
+
+        return {
+            "success": True,
+            "message": f"Uploaded {file.filename} to {remote_path}"
+        }
+
+    except Exception as e:
+        logger.error(f"SFTP upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sftp/download")
+async def sftp_download_file(remote_path: str, request: Request):
+    """Download file from SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Read file content
+        with sftp.open(remote_path, 'rb') as remote_file:
+            file_content = remote_file.read()
+
+        filename = os.path.basename(remote_path)
+
+        return StreamingResponse(
+            BytesIO(file_content),
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        logger.error(f"SFTP download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/delete")
+async def sftp_delete_item(request: Request, path: str = Form(...)):
+    """Delete file or directory from SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Check if directory
+        try:
+            attr = sftp.stat(path)
+            is_dir = stat.S_ISDIR(attr.st_mode)
+
+            if is_dir:
+                sftp.rmdir(path)
+            else:
+                sftp.remove(path)
+        except:
+            # If stat fails, try remove
+            sftp.remove(path)
+
+        return {"success": True, "message": "Deleted successfully"}
+
+    except Exception as e:
+        logger.error(f"SFTP delete error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/mkdir")
+async def sftp_create_directory(request: Request, path: str = Form(...), name: str = Form(...)):
+    """Create directory on SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        new_path = os.path.join(path, name)
+        sftp.mkdir(new_path)
+
+        return {"success": True, "path": new_path}
+
+    except Exception as e:
+        logger.error(f"SFTP mkdir error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/disconnect")
+async def sftp_disconnect(request: Request):
+    """Disconnect from SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id in sftp_connections:
+            try:
+                sftp_connections[session_id]['sftp'].close()
+                sftp_connections[session_id]['ssh'].close()
+            except:
+                pass
+            del sftp_connections[session_id]
+
+        return {"success": True, "message": "Disconnected from SFTP server"}
+
+    except Exception as e:
+        logger.error(f"SFTP disconnect error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sftp/status")
+async def sftp_status(request: Request):
+    """Check SFTP connection status"""
+    session_id = get_or_create_session(request)
+
+    if session_id in sftp_connections:
+        conn = sftp_connections[session_id]
+        return {
+            "connected": True,
+            "host": conn['host'],
+            "username": conn['username']
+        }
+    else:
+        return {"connected": False}
+
+
+@app.get("/sftpmanager")
+async def sftp_manager_page():
+    """Serve the SFTP manager page"""
+    return FileResponse("sftpmanager.html")
