@@ -577,21 +577,24 @@
         let fileData = null;
         let fileUrl = null;
 
-        // Get filename from URL
+        // Get file identifier from URL
         const pathParts = window.location.pathname.split('/');
-        const filename = pathParts[pathParts.length - 1];
+        const identifier = pathParts[pathParts.length - 1];
+        const isShareLink = pathParts[1] === 'f';  // /f/{share_id} vs /preview/{filename}
 
         // Load file info
         async function loadFileInfo() {
             try {
-                const response = await fetch(`/api/files/info/${filename}`);
+                // Use appropriate endpoint based on URL type
+                const endpoint = isShareLink ? `/api/file/${identifier}` : `/api/files/info/${identifier}`;
+                const response = await fetch(endpoint);
 
                 if (!response.ok) {
                     throw new Error('File not found or access denied');
                 }
 
                 fileData = await response.json();
-                fileUrl = window.location.origin + fileData.download_url;
+                fileUrl = fileData.share_url || (window.location.origin + fileData.download_url);
 
                 displayFileInfo();
                 displayPreview();

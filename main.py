@@ -1407,6 +1407,13 @@ ADMIN_PASSWORD = "nauvaldrive"
 # Shared files storage
 shared_files = {}  # {share_id: filename}
 
+def generate_share_id() -> str:
+    """Generate unique share ID for files"""
+    while True:
+        share_id = secrets.token_urlsafe(8)  # Short ID like: aB3dE5fG
+        if share_id not in shared_files:
+            return share_id
+
 def verify_admin(username: str, password: str) -> bool:
     """Verify admin credentials"""
     return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
@@ -1500,6 +1507,10 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         with open(path, "wb") as buffer:
             buffer.write(encrypted_content)
 
+        # Generate share ID
+        share_id = generate_share_id()
+        shared_files[share_id] = final_name
+
         # Store metadata
         uploaded_files[final_name] = {
             "path": path,
@@ -1512,7 +1523,8 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
             "hmac": file_hmac,
             "downloads": 0,
             "owner_session": session_id if not is_admin else "admin",
-            "is_shared": False
+            "is_shared": False,
+            "share_id": share_id
         }
         save_uploaded_files()
 
@@ -1530,7 +1542,9 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
             "filename": final_name,
             "original_name": file.filename,
             "size": file_size,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
+            "share_id": share_id,
+            "share_url": f"https://nauval.cloud/f/{share_id}"
         }
     except Exception as e:
         logger.error(f"Drive upload error: {e}")
@@ -1628,14 +1642,50 @@ async def share_file(filename: str, request: Request):
         logger.error(f"Error sharing file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/f/{share_id}")
+async def preview_file_by_share(share_id: str):
+    """Serve file preview page by share ID"""
+    return FileResponse("preview.html")
+
+@app.get("/api/file/{share_id}")
+async def get_file_info_by_share(share_id: str, request: Request):
+    """Get file info by share ID - public access"""
+    try:
+        # Get filename from share_id
+        if share_id not in shared_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        filename = shared_files[share_id]
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        data = uploaded_files[filename]
+
+        return {
+            "filename": filename,
+            "original_name": data.get("original_name", filename),
+            "size": data.get("size", 0),
+            "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+            "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+            "downloads": data.get("downloads", 0),
+            "download_url": f"/download/{filename}",
+            "share_url": f"https://nauval.cloud/f/{share_id}",
+            "file_type": filename.split('.')[-1] if '.' in filename else 'unknown'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting file info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/preview/{filename}")
 async def preview_file_page(filename: str):
-    """Serve file preview page"""
+    """Serve file preview page (legacy - for old links)"""
     return FileResponse("preview.html")
 
 @app.get("/api/files/info/{filename}")
 async def get_file_info(filename: str, request: Request):
-    """Get file info for preview"""
+    """Get file info for preview (legacy - for old links)"""
     try:
         if filename not in uploaded_files:
             raise HTTPException(status_code=404, detail="File not found")
