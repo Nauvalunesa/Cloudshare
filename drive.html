@@ -779,6 +779,12 @@
                     <i class="fas fa-trash"></i>
                     <span>Trash</span>
                 </a>
+
+                <!-- Admin Only: File Manager -->
+                <a href="/filemanager" class="nav-item" id="filemanager-link" style="display: none; margin-top: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <i class="fas fa-folder-tree"></i>
+                    <span>File Manager</span>
+                </a>
             </nav>
 
             <div class="storage-info">
@@ -1013,17 +1019,20 @@
             const adminBadge = document.getElementById('admin-badge');
             const authBtn = document.getElementById('auth-btn');
             const logoutBtn = document.getElementById('logout-btn');
+            const fileManagerLink = document.getElementById('filemanager-link');
 
             if (isAdmin) {
                 // Show admin UI
                 adminBadge.style.display = 'block';
                 authBtn.style.display = 'none';
                 logoutBtn.style.display = 'flex';
+                fileManagerLink.style.display = 'flex';
             } else {
                 // Show public UI
                 adminBadge.style.display = 'none';
                 authBtn.style.display = 'flex';
                 logoutBtn.style.display = 'none';
+                fileManagerLink.style.display = 'none';
             }
         }
 

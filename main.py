@@ -1840,3 +1840,194 @@ async def search_files(q: str, request: Request):
     except Exception as e:
         logger.error(f"Error searching files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== FILE SYSTEM BROWSER (ADMIN ONLY) =====
+
+@app.get("/api/filesystem/browse")
+async def browse_filesystem(path: str = "/", request: Request = None):
+    """Browse server file system (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        # Security: prevent path traversal attacks
+        real_path = os.path.abspath(path)
+
+        if not os.path.exists(real_path):
+            raise HTTPException(status_code=404, detail="Path not found")
+
+        if not os.path.isdir(real_path):
+            raise HTTPException(status_code=400, detail="Path is not a directory")
+
+        items = []
+        try:
+            for item_name in os.listdir(real_path):
+                item_path = os.path.join(real_path, item_name)
+                try:
+                    stat = os.stat(item_path)
+                    is_dir = os.path.isdir(item_path)
+                    items.append({
+                        "name": item_name,
+                        "path": item_path,
+                        "is_dir": is_dir,
+                        "size": stat.st_size if not is_dir else 0,
+                        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        "permissions": oct(stat.st_mode)[-3:]
+                    })
+                except (PermissionError, OSError):
+                    # Skip files we can't access
+                    continue
+        except PermissionError:
+            raise HTTPException(status_code=403, detail="Permission denied")
+
+        # Sort: directories first, then files
+        items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+
+        return {
+            "current_path": real_path,
+            "parent_path": os.path.dirname(real_path) if real_path != "/" else None,
+            "items": items,
+            "total": len(items)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error browsing filesystem: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/filesystem/copy-to-drive")
+async def copy_to_drive(request: Request, file_path: str = Form(...)):
+    """Copy file from server filesystem to CloudShare Drive (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        real_path = os.path.abspath(file_path)
+
+        if not os.path.exists(real_path):
+            raise HTTPException(status_code=404, detail="File not found")
+
+        if not os.path.isfile(real_path):
+            raise HTTPException(status_code=400, detail="Path is not a file")
+
+        # Read file
+        with open(real_path, "rb") as f:
+            file_content = f.read()
+
+        file_size = len(file_content)
+
+        if file_size > 500 * 1024 * 1024:  # 500MB limit for admin
+            raise HTTPException(status_code=400, detail="File too large (max 500MB)")
+
+        # Encrypt file
+        file_key = get_random_bytes(32)
+        nonce = get_random_bytes(12)
+        cipher = AES.new(file_key, AES.MODE_GCM, nonce=nonce)
+        ciphertext, tag = cipher.encrypt_and_digest(file_content)
+        encrypted_content = nonce + tag + ciphertext
+        file_hmac = compute_hmac(encrypted_content)
+
+        # Generate filename
+        original_name = os.path.basename(real_path)
+        ext = os.path.splitext(original_name)[1]
+        name = generate_code()
+        final_name = f"{name}{ext}"
+        internal_name = f"{final_name}.enc"
+        dest_path = os.path.join(STORAGE_DIR, internal_name)
+
+        # Save file
+        with open(dest_path, "wb") as buffer:
+            buffer.write(encrypted_content)
+
+        # Generate share ID
+        share_id = generate_share_id()
+        shared_files[share_id] = final_name
+
+        # Store metadata
+        session_id = get_or_create_session(request)
+        uploaded_files[final_name] = {
+            "original_name": original_name,
+            "size": file_size,
+            "created_at": datetime.utcnow(),
+            "downloads": 0,
+            "file_key": base64.b64encode(file_key).decode(),
+            "hmac": file_hmac,
+            "owner_session": session_id,
+            "is_shared": True,
+            "share_id": share_id
+        }
+
+        return {
+            "success": True,
+            "filename": final_name,
+            "original_name": original_name,
+            "size": file_size,
+            "share_id": share_id,
+            "share_url": f"/f/{share_id}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error copying file to drive: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/filesystem/delete")
+async def delete_filesystem_item(request: Request, path: str = Form(...)):
+    """Delete file or directory from server filesystem (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        real_path = os.path.abspath(path)
+
+        if not os.path.exists(real_path):
+            raise HTTPException(status_code=404, detail="Path not found")
+
+        # Prevent deleting critical system paths
+        critical_paths = ["/", "/bin", "/boot", "/dev", "/etc", "/lib", "/proc", "/root", "/sbin", "/sys", "/usr", "/var"]
+        if real_path in critical_paths or any(real_path.startswith(cp + "/") for cp in critical_paths):
+            raise HTTPException(status_code=403, detail="Cannot delete system directories")
+
+        if os.path.isdir(real_path):
+            shutil.rmtree(real_path)
+        else:
+            os.remove(real_path)
+
+        return {"success": True, "message": "Deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting filesystem item: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/filesystem/mkdir")
+async def create_directory(request: Request, path: str = Form(...), name: str = Form(...)):
+    """Create new directory in server filesystem (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        parent_path = os.path.abspath(path)
+        new_path = os.path.join(parent_path, name)
+
+        if os.path.exists(new_path):
+            raise HTTPException(status_code=400, detail="Directory already exists")
+
+        os.makedirs(new_path)
+
+        return {"success": True, "path": new_path}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating directory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/filemanager")
+async def file_manager_page():
+    """Serve the dual-panel file manager (admin only)"""
+    return FileResponse("filemanager.html")
