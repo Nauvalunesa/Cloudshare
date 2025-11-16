@@ -727,14 +727,24 @@
             </div>
         </div>
         <div class="header-actions">
+            <!-- Admin Badge -->
+            <div id="admin-badge" style="display: none; padding: 0.5rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; font-size: 0.85rem; font-weight: 500; margin-right: 0.5rem;">
+                <i class="fas fa-shield-alt"></i> Admin Mode
+            </div>
+
             <button class="icon-btn" title="Grid view" id="grid-view-btn">
                 <i class="fas fa-th"></i>
             </button>
             <button class="icon-btn" title="List view" id="list-view-btn">
                 <i class="fas fa-list"></i>
             </button>
-            <button class="icon-btn" title="Settings">
-                <i class="fas fa-cog"></i>
+
+            <!-- Login/Logout Button -->
+            <button class="icon-btn" id="auth-btn" title="Admin Login" onclick="showLoginModal()" style="display: none;">
+                <i class="fas fa-sign-in-alt"></i>
+            </button>
+            <button class="icon-btn" id="logout-btn" title="Logout" onclick="logout()" style="display: none;">
+                <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
     </div>
@@ -860,6 +870,41 @@
         </button>
     </div>
 
+    <!-- Admin Login Modal -->
+    <div class="modal" id="login-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Admin Login</h2>
+                <button class="close-btn" onclick="closeLoginModal()">&times;</button>
+            </div>
+
+            <form id="login-form" onsubmit="adminLogin(event)">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Username</label>
+                    <input type="text" id="login-username" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
+                    <input type="password" id="login-password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                </div>
+
+                <div id="login-error" style="display: none; padding: 0.8rem; background: #fee; color: #c00; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
+                    Invalid credentials
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;" id="login-submit-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Login as Admin
+                </button>
+            </form>
+
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary); font-size: 0.85rem;">
+                <i class="fas fa-info-circle"></i> Public users can upload and manage their own files without logging in
+            </div>
+        </div>
+    </div>
+
     <!-- Upload Modal -->
     <div class="modal" id="upload-modal">
         <div class="modal-content">
@@ -940,13 +985,112 @@
         let uploadQueue = [];
         let currentView = 'grid';
         let contextMenuFile = null;
+        let isAdmin = false;
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkAdminStatus();
             loadFiles();
             setupEventListeners();
             updateStorageInfo();
         });
+
+        // ===== ADMIN AUTHENTICATION =====
+        async function checkAdminStatus() {
+            try {
+                const response = await fetch('/api/admin/check');
+                const data = await response.json();
+                isAdmin = data.is_admin;
+                updateAuthUI();
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+                isAdmin = false;
+                updateAuthUI();
+            }
+        }
+
+        function updateAuthUI() {
+            const adminBadge = document.getElementById('admin-badge');
+            const authBtn = document.getElementById('auth-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (isAdmin) {
+                // Show admin UI
+                adminBadge.style.display = 'block';
+                authBtn.style.display = 'none';
+                logoutBtn.style.display = 'flex';
+            } else {
+                // Show public UI
+                adminBadge.style.display = 'none';
+                authBtn.style.display = 'flex';
+                logoutBtn.style.display = 'none';
+            }
+        }
+
+        function showLoginModal() {
+            document.getElementById('login-modal').classList.add('show');
+            document.getElementById('login-error').style.display = 'none';
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-modal').classList.remove('show');
+            document.getElementById('login-form').reset();
+        }
+
+        async function adminLogin(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const submitBtn = document.getElementById('login-submit-btn');
+            const errorDiv = document.getElementById('login-error');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+            errorDiv.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    isAdmin = true;
+                    updateAuthUI();
+                    closeLoginModal();
+                    await loadFiles();  // Reload files with admin access
+                    alert('✅ Logged in as Admin!');
+                } else {
+                    errorDiv.textContent = 'Invalid username or password';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login as Admin';
+            }
+        }
+
+        async function logout() {
+            if (!confirm('Logout from admin mode?')) return;
+
+            try {
+                await fetch('/api/admin/logout', { method: 'POST' });
+                isAdmin = false;
+                updateAuthUI();
+                await loadFiles();  // Reload files with public access
+                alert('✅ Logged out successfully');
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
 
         // Setup event listeners
         function setupEventListeners() {
@@ -1071,8 +1215,17 @@
             progressList.innerHTML = progressHTML;
 
             // Upload files
+            const uploadedFiles = [];
             for (let i = 0; i < uploadQueue.length; i++) {
-                await uploadSingleFile(uploadQueue[i], i);
+                const result = await uploadSingleFile(uploadQueue[i], i);
+                if (result && result.success) {
+                    uploadedFiles.push(result);
+                }
+            }
+
+            // Show share links if any files uploaded successfully
+            if (uploadedFiles.length > 0) {
+                showUploadResults(uploadedFiles);
             }
 
             // Refresh files list
@@ -1089,12 +1242,42 @@
             }, 1500);
         }
 
+        function showUploadResults(files) {
+            const progressList = document.getElementById('upload-progress-list');
+
+            let html = '<div style="margin-top: 2rem; padding: 1rem; background: #e8f5e9; border-radius: 8px;">';
+            html += '<h3 style="margin-bottom: 1rem; color: var(--success-color);"><i class="fas fa-check-circle"></i> Upload Successful!</h3>';
+
+            files.forEach(file => {
+                html += `
+                    <div style="padding: 0.8rem; background: white; border-radius: 8px; margin-bottom: 0.5rem;">
+                        <div style="font-weight: 500; margin-bottom: 0.5rem;">${file.original_name}</div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" value="${file.share_url}" readonly style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem;">
+                            <button onclick="copyShareLink('${file.share_url}')" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem;">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <a href="${file.share_url}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem; text-decoration: none;">
+                                <i class="fas fa-external-link-alt"></i> Open
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            progressList.innerHTML += html;
+        }
+
+        function copyShareLink(url) {
+            navigator.clipboard.writeText(url);
+            alert('✅ Share link copied to clipboard!');
+        }
+
         async function uploadSingleFile(file, index) {
             return new Promise((resolve) => {
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('expire_value', '30');
-                formData.append('expire_unit', 'days');
 
                 const xhr = new XMLHttpRequest();
 
@@ -1108,22 +1291,24 @@
 
                 xhr.onload = function() {
                     if (xhr.status === 200) {
+                        const data = JSON.parse(xhr.responseText);
                         document.getElementById(`progress-status-${index}`).textContent = 'Done!';
                         document.getElementById(`progress-status-${index}`).style.color = 'var(--success-color)';
+                        resolve(data);  // Return file data including share_id
                     } else {
                         document.getElementById(`progress-status-${index}`).textContent = 'Failed';
                         document.getElementById(`progress-status-${index}`).style.color = 'var(--danger-color)';
+                        resolve(null);
                     }
-                    resolve();
                 };
 
                 xhr.onerror = function() {
                     document.getElementById(`progress-status-${index}`).textContent = 'Error';
                     document.getElementById(`progress-status-${index}`).style.color = 'var(--danger-color)';
-                    resolve();
+                    resolve(null);
                 };
 
-                xhr.open('POST', '/upload');
+                xhr.open('POST', '/api/drive/upload');  // Use new endpoint
                 xhr.send(formData);
             });
         }
@@ -1161,18 +1346,21 @@
 
             let html = '';
             allFiles.forEach(file => {
+                const shareId = file.share_id || file.filename;
+                const previewUrl = file.share_id ? `/f/${file.share_id}` : `/preview/${file.filename}`;
+
                 html += `
-                    <div class="file-card" data-filename="${file.filename}" oncontextmenu="showContextMenu(event, '${file.filename}')">
-                        <input type="checkbox" class="file-checkbox" onchange="toggleFileSelection('${file.filename}')">
+                    <div class="file-card" data-filename="${file.filename}" oncontextmenu="showContextMenu(event, '${file.filename}')" onclick="if(!event.target.closest('.file-checkbox, .file-actions')) window.open('${previewUrl}', '_blank');" style="cursor: pointer;">
+                        <input type="checkbox" class="file-checkbox" onchange="toggleFileSelection('${file.filename}')" onclick="event.stopPropagation();">
                         <div class="file-icon">
                             <i class="${getFileIcon(file.filename)}"></i>
                         </div>
-                        <div class="file-name" title="${file.filename}">${file.filename}</div>
+                        <div class="file-name" title="${file.original_name || file.filename}">${file.original_name || file.filename}</div>
                         <div class="file-meta">
                             <span>${formatFileSize(file.size)}</span>
                             <span>${formatDate(file.created_at)}</span>
                         </div>
-                        <div class="file-actions">
+                        <div class="file-actions" onclick="event.stopPropagation();">
                             <button class="icon-btn" onclick="downloadFileByName('${file.filename}')" title="Download">
                                 <i class="fas fa-download"></i>
                             </button>
@@ -1189,12 +1377,15 @@
 
             let html = '';
             allFiles.forEach(file => {
+                const shareId = file.share_id || file.filename;
+                const previewUrl = file.share_id ? `/f/${file.share_id}` : `/preview/${file.filename}`;
+
                 html += `
-                    <div class="list-item" data-filename="${file.filename}" oncontextmenu="showContextMenu(event, '${file.filename}')">
-                        <div><input type="checkbox" class="file-checkbox" onchange="toggleFileSelection('${file.filename}')"></div>
+                    <div class="list-item" data-filename="${file.filename}" oncontextmenu="showContextMenu(event, '${file.filename}')" onclick="if(!event.target.closest('.file-checkbox')) window.open('${previewUrl}', '_blank');" style="cursor: pointer;">
+                        <div><input type="checkbox" class="file-checkbox" onchange="toggleFileSelection('${file.filename}')" onclick="event.stopPropagation();"></div>
                         <div class="list-item-name">
                             <i class="${getFileIcon(file.filename)}"></i>
-                            <span>${file.filename}</span>
+                            <span>${file.original_name || file.filename}</span>
                         </div>
                         <div>Me</div>
                         <div>${formatDate(file.created_at)}</div>
