@@ -2252,6 +2252,74 @@ async def sftp_create_directory(request: Request, path: str = Form(...), name: s
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/sftp/read")
+async def sftp_read_file(remote_path: str, request: Request):
+    """Read file content from SFTP server for editing"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Read file content
+        with sftp.open(remote_path, 'r') as remote_file:
+            content = remote_file.read()
+
+        # Try to decode as text
+        try:
+            text_content = content.decode('utf-8')
+        except UnicodeDecodeError:
+            # Try other encodings
+            try:
+                text_content = content.decode('latin-1')
+            except:
+                raise HTTPException(status_code=400, detail="File is not a text file")
+
+        return {
+            "success": True,
+            "content": text_content,
+            "path": remote_path,
+            "filename": os.path.basename(remote_path)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"SFTP read error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/write")
+async def sftp_write_file(
+    request: Request,
+    remote_path: str = Form(...),
+    content: str = Form(...)
+):
+    """Write/save file content to SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Write content to file
+        with sftp.open(remote_path, 'w') as remote_file:
+            remote_file.write(content.encode('utf-8'))
+
+        return {
+            "success": True,
+            "message": f"File saved: {os.path.basename(remote_path)}"
+        }
+
+    except Exception as e:
+        logger.error(f"SFTP write error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/sftp/disconnect")
 async def sftp_disconnect(request: Request):
     """Disconnect from SFTP server"""
