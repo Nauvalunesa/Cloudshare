@@ -1695,10 +1695,15 @@ async def get_file_info(filename: str, request: Request):
 
         data = uploaded_files[filename]
         is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
 
         # Check if file is accessible
-        if not is_admin and not data.get("is_shared", False):
-            raise HTTPException(status_code=403, detail="File not shared")
+        # Allow if: file is shared OR user is admin OR user is owner
+        is_shared = data.get("is_shared", False)
+        is_owner = data.get("owner_session") == session_id
+
+        if not (is_shared or is_admin or is_owner):
+            raise HTTPException(status_code=403, detail="Access denied")
 
         return {
             "filename": filename,
