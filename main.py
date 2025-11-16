@@ -1375,3 +1375,160 @@ async def get_file_stats(filename: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== NEW GOOGLE DRIVE-LIKE ENDPOINTS =====
+
+@app.get("/drive")
+async def drive_dashboard():
+    """Serve the Google Drive-like dashboard"""
+    return FileResponse("drive.html")
+
+
+@app.get("/api/files/list")
+async def list_files(request: Request):
+    """List all uploaded files"""
+    await rate_limit_check(request, "list_files", max_requests=60, window_seconds=60)
+
+    try:
+        files_list = []
+        for filename, data in uploaded_files.items():
+            files_list.append({
+                "filename": filename,
+                "original_name": data.get("original_name", filename),
+                "size": data.get("size", 0),
+                "encrypted_size": data.get("encrypted_size", 0),
+                "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+                "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+                "downloads": data.get("downloads", 0),
+                "last_accessed": data.get("last_accessed").isoformat() if data.get("last_accessed") else None,
+            })
+
+        # Sort by creation date (newest first)
+        files_list.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+        return {"files": files_list, "total": len(files_list)}
+    except Exception as e:
+        logger.error(f"Error listing files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/files/delete/{filename}")
+async def delete_file(filename: str, request: Request):
+    """Delete a file"""
+    await rate_limit_check(request, "delete_file", max_requests=30, window_seconds=60)
+
+    try:
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Get file data
+        file_data = uploaded_files[filename]
+        file_path = file_data.get("path")
+
+        # Delete physical file
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+
+        # Remove from database
+        del uploaded_files[filename]
+        save_uploaded_files()
+
+        return {"success": True, "message": f"File {filename} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/files/rename/{filename}")
+async def rename_file(filename: str, request: Request):
+    """Rename a file"""
+    await rate_limit_check(request, "rename_file", max_requests=30, window_seconds=60)
+
+    try:
+        # Get new name from JSON body
+        body = await request.json()
+        new_name = body.get("new_name")
+
+        if not new_name:
+            raise HTTPException(status_code=400, detail="new_name is required")
+
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        if new_name in uploaded_files:
+            raise HTTPException(status_code=400, detail="File with new name already exists")
+
+        # Get file data
+        file_data = uploaded_files[filename]
+        old_path = file_data.get("path")
+
+        # Create new path
+        storage_dir = os.path.dirname(old_path)
+        new_path = os.path.join(storage_dir, new_name + ".enc")
+
+        # Rename physical file
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+
+        # Update database
+        file_data["path"] = new_path
+        file_data["original_name"] = new_name
+        uploaded_files[new_name] = file_data
+        del uploaded_files[filename]
+        save_uploaded_files()
+
+        return {"success": True, "message": f"File renamed to {new_name}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error renaming file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/files/stats")
+async def get_storage_stats(request: Request):
+    """Get storage statistics"""
+    await rate_limit_check(request, "storage_stats", max_requests=60, window_seconds=60)
+
+    try:
+        total_size = 0
+        total_files = len(uploaded_files)
+
+        for filename, data in uploaded_files.items():
+            total_size += data.get("size", 0)
+
+        return {
+            "total_files": total_files,
+            "total_size": total_size,
+            "total_downloads": sum(data.get("downloads", 0) for data in uploaded_files.values()),
+        }
+    except Exception as e:
+        logger.error(f"Error getting stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/files/search")
+async def search_files(q: str, request: Request):
+    """Search files by name"""
+    await rate_limit_check(request, "search_files", max_requests=60, window_seconds=60)
+
+    try:
+        query = q.lower()
+        results = []
+
+        for filename, data in uploaded_files.items():
+            if query in filename.lower() or query in data.get("original_name", "").lower():
+                results.append({
+                    "filename": filename,
+                    "original_name": data.get("original_name", filename),
+                    "size": data.get("size", 0),
+                    "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+                })
+
+        return {"results": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"Error searching files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
