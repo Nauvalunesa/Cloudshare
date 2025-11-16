@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Form, File, UploadFile, HTTPException, Request, Header
-from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Form, File, UploadFile, HTTPException, Request, Header, Response, Cookie
+from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -369,6 +369,14 @@ upload_progress = {}
 html_pages = {}
 biolinks = {}
 
+# Session management
+def get_or_create_session(request: Request) -> str:
+    """Get existing session ID from cookie or create new one"""
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        session_id = secrets.token_urlsafe(32)
+    return session_id
+
 
 def save_short_urls():
     with open(URL_STORAGE_FILE, "w") as f:
@@ -664,8 +672,11 @@ def get_upload_progress(upload_id: str):
     return upload_progress.get(upload_id, {"progress": 0, "speed": 0, "status": "not_found"})
 
 @app.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...), filename: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None), upload_id: Optional[str] = Form(None)):
+async def upload_file(request: Request, response: Response, file: UploadFile = File(...), filename: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None), upload_id: Optional[str] = Form(None)):
     try:
+        # Get or create session
+        session_id = get_or_create_session(request)
+
         client_ip = get_real_ip(request)
         if active_uploads[client_ip] >= MAX_CONCURRENT_UPLOADS_PER_IP:
             raise HTTPException(status_code=429, detail=f"Too many concurrent uploads")
@@ -717,7 +728,8 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
             "created_at": datetime.utcnow(),
             "encryption_key": base64.b64encode(file_key).decode(),
             "hmac": file_hmac,
-            "downloads": 0
+            "downloads": 0,
+            "owner_session": session_id
         }
         save_uploaded_files()
 
@@ -729,6 +741,15 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
         active_uploads[client_ip] = max(0, active_uploads[client_ip] - 1)
         if active_uploads[client_ip] == 0:
             active_uploads.pop(client_ip, None)
+
+        # Set session cookie
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            max_age=30*24*60*60,  # 30 days
+            httponly=True,
+            samesite="lax"
+        )
 
         return {
             "file_url": url,
@@ -1379,47 +1400,285 @@ async def get_file_stats(filename: str):
 
 # ===== NEW GOOGLE DRIVE-LIKE ENDPOINTS =====
 
+# Admin credentials
+ADMIN_USERNAME = "nauval"
+ADMIN_PASSWORD = "nauvaldrive"
+
+# Shared files storage
+shared_files = {}  # {share_id: filename}
+
+def verify_admin(username: str, password: str) -> bool:
+    """Verify admin credentials"""
+    return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
+
+def create_admin_token(username: str) -> str:
+    """Create admin session token"""
+    token_data = f"{username}:{datetime.utcnow().isoformat()}:{secrets.token_hex(16)}"
+    return base64.b64encode(token_data.encode()).decode()
+
+def verify_admin_token(request: Request) -> bool:
+    """Verify admin token from cookie"""
+    token = request.cookies.get("admin_token")
+    if not token:
+        return False
+    try:
+        decoded = base64.b64decode(token).decode()
+        username = decoded.split(":")[0]
+        return username == ADMIN_USERNAME
+    except:
+        return False
+
+@app.post("/api/admin/login")
+async def admin_login(username: str = Form(...), password: str = Form(...), response: Response = None):
+    """Admin login endpoint"""
+    if verify_admin(username, password):
+        token = create_admin_token(username)
+        response.set_cookie(
+            key="admin_token",
+            value=token,
+            max_age=7*24*60*60,  # 7 days
+            httponly=True,
+            samesite="lax"
+        )
+        return {"success": True, "message": "Login successful"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.post("/api/admin/logout")
+async def admin_logout(response: Response):
+    """Admin logout endpoint"""
+    response.delete_cookie("admin_token")
+    return {"success": True, "message": "Logged out"}
+
+@app.get("/api/admin/check")
+async def check_admin(request: Request):
+    """Check if user is admin"""
+    is_admin = verify_admin_token(request)
+    return {"is_admin": is_admin}
+
 @app.get("/drive")
 async def drive_dashboard():
     """Serve the Google Drive-like dashboard"""
     return FileResponse("drive.html")
 
 
-@app.get("/api/files/list")
-async def list_files(request: Request):
-    """List all uploaded files"""
+@app.post("/api/drive/upload")
+async def drive_upload(request: Request, response: Response, file: UploadFile = File(...)):
+    """Upload file to drive (admin only or creates session)"""
     try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file selected")
+
+        file_content = await file.read()
+        file_size = len(file_content)
+
+        if file_size > 100 * 1024 * 1024:  # 100MB for drive
+            raise HTTPException(status_code=400, detail="Max file size is 100MB")
+
+        if file_size == 0:
+            raise HTTPException(status_code=400, detail="Empty files not allowed")
+
+        # Encrypt file
+        file_key = get_random_bytes(32)
+        nonce = get_random_bytes(12)
+        cipher = AES.new(file_key, AES.MODE_GCM, nonce=nonce)
+        ciphertext, tag = cipher.encrypt_and_digest(file_content)
+        encrypted_content = nonce + tag + ciphertext
+        file_hmac = compute_hmac(encrypted_content)
+
+        # Generate filename
+        ext = os.path.splitext(file.filename)[1]
+        name = generate_code()
+        final_name = f"{name}{ext}"
+        internal_name = f"{final_name}.enc"
+        path = os.path.join(STORAGE_DIR, internal_name)
+
+        # Save file
+        with open(path, "wb") as buffer:
+            buffer.write(encrypted_content)
+
+        # Store metadata
+        uploaded_files[final_name] = {
+            "path": path,
+            "expires_at": None,  # No expiry for drive files
+            "original_name": file.filename,
+            "size": file_size,
+            "encrypted_size": len(encrypted_content),
+            "created_at": datetime.utcnow(),
+            "encryption_key": base64.b64encode(file_key).decode(),
+            "hmac": file_hmac,
+            "downloads": 0,
+            "owner_session": session_id if not is_admin else "admin",
+            "is_shared": False
+        }
+        save_uploaded_files()
+
+        # Set session cookie
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            max_age=30*24*60*60,
+            httponly=True,
+            samesite="lax"
+        )
+
+        return {
+            "success": True,
+            "filename": final_name,
+            "original_name": file.filename,
+            "size": file_size,
+            "created_at": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Drive upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files/list")
+async def list_files(request: Request, response: Response):
+    """List files - admin sees all, public sees only their own files"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        # Set session cookie for public users
+        if not is_admin:
+            response.set_cookie(
+                key="session_id",
+                value=session_id,
+                max_age=30*24*60*60,
+                httponly=True,
+                samesite="lax"
+            )
+
         files_list = []
         for filename, data in uploaded_files.items():
-            files_list.append({
-                "filename": filename,
-                "original_name": data.get("original_name", filename),
-                "size": data.get("size", 0),
-                "encrypted_size": data.get("encrypted_size", 0),
-                "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
-                "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
-                "downloads": data.get("downloads", 0),
-                "last_accessed": data.get("last_accessed").isoformat() if data.get("last_accessed") else None,
-            })
+            # Admin sees all files with full details
+            if is_admin:
+                files_list.append({
+                    "filename": filename,
+                    "original_name": data.get("original_name", filename),
+                    "size": data.get("size", 0),
+                    "encrypted_size": data.get("encrypted_size", 0),
+                    "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+                    "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+                    "downloads": data.get("downloads", 0),
+                    "last_accessed": data.get("last_accessed").isoformat() if data.get("last_accessed") else None,
+                    "is_shared": data.get("is_shared", False),
+                    "owner_session": data.get("owner_session", "unknown"),
+                    "is_mine": True  # Admin owns everything
+                })
+            # Public only sees their own files
+            elif data.get("owner_session") == session_id:
+                files_list.append({
+                    "filename": filename,
+                    "original_name": data.get("original_name", filename),
+                    "size": data.get("size", 0),
+                    "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+                    "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+                    "downloads": data.get("downloads", 0),
+                    "is_shared": data.get("is_shared", False),
+                    "is_mine": True
+                })
 
         # Sort by creation date (newest first)
         files_list.sort(key=lambda x: x.get("created_at", ""), reverse=True)
 
-        return {"files": files_list, "total": len(files_list)}
+        return {
+            "files": files_list,
+            "total": len(files_list),
+            "is_admin": is_admin
+        }
     except Exception as e:
         logger.error(f"Error listing files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/api/files/delete/{filename}")
-async def delete_file(filename: str, request: Request):
-    """Delete a file"""
+@app.post("/api/files/share/{filename}")
+async def share_file(filename: str, request: Request):
+    """Share/unshare a file - users can share their own files, admin can share any"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        file_data = uploaded_files[filename]
+
+        # Check ownership - must be owner or admin
+        if not is_admin and file_data.get("owner_session") != session_id:
+            raise HTTPException(status_code=403, detail="You can only share your own files")
+
+        # Toggle share status
+        current_status = file_data.get("is_shared", False)
+        uploaded_files[filename]["is_shared"] = not current_status
+        save_uploaded_files()
+
+        return {
+            "success": True,
+            "is_shared": uploaded_files[filename]["is_shared"],
+            "message": f"File {'shared' if uploaded_files[filename]['is_shared'] else 'unshared'}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sharing file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/preview/{filename}")
+async def preview_file_page(filename: str):
+    """Serve file preview page"""
+    return FileResponse("preview.html")
+
+@app.get("/api/files/info/{filename}")
+async def get_file_info(filename: str, request: Request):
+    """Get file info for preview"""
     try:
         if filename not in uploaded_files:
             raise HTTPException(status_code=404, detail="File not found")
 
-        # Get file data
+        data = uploaded_files[filename]
+        is_admin = verify_admin_token(request)
+
+        # Check if file is accessible
+        if not is_admin and not data.get("is_shared", False):
+            raise HTTPException(status_code=403, detail="File not shared")
+
+        return {
+            "filename": filename,
+            "original_name": data.get("original_name", filename),
+            "size": data.get("size", 0),
+            "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+            "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+            "downloads": data.get("downloads", 0),
+            "download_url": f"/download/{filename}",
+            "file_type": filename.split('.')[-1] if '.' in filename else 'unknown'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting file info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/files/delete/{filename}")
+async def delete_file(filename: str, request: Request):
+    """Delete a file - users can delete their own files, admin can delete any"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
         file_data = uploaded_files[filename]
+
+        # Check ownership - must be owner or admin
+        if not is_admin and file_data.get("owner_session") != session_id:
+            raise HTTPException(status_code=403, detail="You can only delete your own files")
+
         file_path = file_data.get("path")
 
         # Delete physical file
@@ -1440,8 +1699,11 @@ async def delete_file(filename: str, request: Request):
 
 @app.post("/api/files/rename/{filename}")
 async def rename_file(filename: str, request: Request):
-    """Rename a file"""
+    """Rename a file - users can rename their own files, admin can rename any"""
     try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
         # Get new name from JSON body
         body = await request.json()
         new_name = body.get("new_name")
@@ -1451,6 +1713,12 @@ async def rename_file(filename: str, request: Request):
 
         if filename not in uploaded_files:
             raise HTTPException(status_code=404, detail="File not found")
+
+        file_data = uploaded_files[filename]
+
+        # Check ownership - must be owner or admin
+        if not is_admin and file_data.get("owner_session") != session_id:
+            raise HTTPException(status_code=403, detail="You can only rename your own files")
 
         if new_name in uploaded_files:
             raise HTTPException(status_code=400, detail="File with new name already exists")
