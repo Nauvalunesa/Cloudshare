@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Form, File, UploadFile, HTTPException, Request, Header
-from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Form, File, UploadFile, HTTPException, Request, Header, Response, Cookie
+from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -29,6 +29,9 @@ import secrets
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 import zipfile
+import paramiko
+import stat
+from paramiko import SSHClient, AutoAddPolicy
 
 
 MAX_TRACKED_IPS = 10000
@@ -369,6 +372,14 @@ upload_progress = {}
 html_pages = {}
 biolinks = {}
 
+# Session management
+def get_or_create_session(request: Request) -> str:
+    """Get existing session ID from cookie or create new one"""
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        session_id = secrets.token_urlsafe(32)
+    return session_id
+
 
 def save_short_urls():
     with open(URL_STORAGE_FILE, "w") as f:
@@ -567,16 +578,7 @@ def advanced_page(request: Request):
         logger.error(f"Error reading advanced.html: {str(e)}")
         return HTMLResponse("<h1>403</h1>")
 
-@app.get("/advanced.html", response_class=HTMLResponse)
-def advanced():
-    try:
-        with open("advanced.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="advanced.html not found")
-    except Exception as e:
-        logger.error(f"Error reading advanced.html: {str(e)}")
-        raise HTTPException(status_code=500, detail="Could not load the page")
+
 
 @app.post("/shorten")
 def shorten_url(original_url: str = Form(...), custom_alias: Optional[str] = Form(None), expires_in_minutes: Optional[int] = Form(None)):
@@ -664,8 +666,11 @@ def get_upload_progress(upload_id: str):
     return upload_progress.get(upload_id, {"progress": 0, "speed": 0, "status": "not_found"})
 
 @app.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...), filename: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None), upload_id: Optional[str] = Form(None)):
+async def upload_file(request: Request, response: Response, file: UploadFile = File(...), filename: Optional[str] = Form(None), expire_value: Optional[int] = Form(None), expire_unit: Optional[str] = Form(None), upload_id: Optional[str] = Form(None)):
     try:
+        # Get or create session
+        session_id = get_or_create_session(request)
+
         client_ip = get_real_ip(request)
         if active_uploads[client_ip] >= MAX_CONCURRENT_UPLOADS_PER_IP:
             raise HTTPException(status_code=429, detail=f"Too many concurrent uploads")
@@ -717,7 +722,8 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
             "created_at": datetime.utcnow(),
             "encryption_key": base64.b64encode(file_key).decode(),
             "hmac": file_hmac,
-            "downloads": 0
+            "downloads": 0,
+            "owner_session": session_id
         }
         save_uploaded_files()
 
@@ -729,6 +735,15 @@ async def upload_file(request: Request, file: UploadFile = File(...), filename: 
         active_uploads[client_ip] = max(0, active_uploads[client_ip] - 1)
         if active_uploads[client_ip] == 0:
             active_uploads.pop(client_ip, None)
+
+        # Set session cookie
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            max_age=30*24*60*60,  # 30 days
+            httponly=True,
+            samesite="lax"
+        )
 
         return {
             "file_url": url,
@@ -1375,3 +1390,970 @@ async def get_file_stats(filename: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== NEW GOOGLE DRIVE-LIKE ENDPOINTS =====
+
+# Admin credentials
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin1234"
+
+# Shared files storage
+shared_files = {}  # {share_id: filename}
+
+def generate_share_id() -> str:
+    """Generate unique share ID for files"""
+    while True:
+        share_id = secrets.token_urlsafe(8)  # Short ID like: aB3dE5fG
+        if share_id not in shared_files:
+            return share_id
+
+def verify_admin(username: str, password: str) -> bool:
+    """Verify admin credentials"""
+    return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
+
+def create_admin_token(username: str) -> str:
+    """Create admin session token"""
+    token_data = f"{username}:{datetime.utcnow().isoformat()}:{secrets.token_hex(16)}"
+    return base64.b64encode(token_data.encode()).decode()
+
+def verify_admin_token(request: Request) -> bool:
+    """Verify admin token from cookie"""
+    token = request.cookies.get("admin_token")
+    if not token:
+        return False
+    try:
+        decoded = base64.b64decode(token).decode()
+        username = decoded.split(":")[0]
+        return username == ADMIN_USERNAME
+    except:
+        return False
+
+@app.post("/api/admin/login")
+async def admin_login(username: str = Form(...), password: str = Form(...), response: Response = None):
+    """Admin login endpoint"""
+    if verify_admin(username, password):
+        token = create_admin_token(username)
+        response.set_cookie(
+            key="admin_token",
+            value=token,
+            max_age=7*24*60*60,  # 7 days
+            httponly=True,
+            samesite="lax"
+        )
+        return {"success": True, "message": "Login successful"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.post("/api/admin/logout")
+async def admin_logout(response: Response):
+    """Admin logout endpoint"""
+    response.delete_cookie("admin_token")
+    return {"success": True, "message": "Logged out"}
+
+@app.get("/api/admin/check")
+async def check_admin(request: Request):
+    """Check if user is admin"""
+    is_admin = verify_admin_token(request)
+    return {"is_admin": is_admin}
+
+@app.get("/drive")
+async def drive_dashboard():
+    """Serve the Google Drive-like dashboard"""
+    return FileResponse("drive.html")
+
+
+@app.post("/api/drive/upload")
+async def drive_upload(request: Request, response: Response, file: UploadFile = File(...)):
+    """Upload file to drive (admin only or creates session)"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file selected")
+
+        file_content = await file.read()
+        file_size = len(file_content)
+
+        if file_size > 100 * 1024 * 1024:  # 100MB for drive
+            raise HTTPException(status_code=400, detail="Max file size is 100MB")
+
+        if file_size == 0:
+            raise HTTPException(status_code=400, detail="Empty files not allowed")
+
+        # Encrypt file
+        file_key = get_random_bytes(32)
+        nonce = get_random_bytes(12)
+        cipher = AES.new(file_key, AES.MODE_GCM, nonce=nonce)
+        ciphertext, tag = cipher.encrypt_and_digest(file_content)
+        encrypted_content = nonce + tag + ciphertext
+        file_hmac = compute_hmac(encrypted_content)
+
+        # Generate filename
+        ext = os.path.splitext(file.filename)[1]
+        name = generate_code()
+        final_name = f"{name}{ext}"
+        internal_name = f"{final_name}.enc"
+        path = os.path.join(STORAGE_DIR, internal_name)
+
+        # Save file
+        with open(path, "wb") as buffer:
+            buffer.write(encrypted_content)
+
+        # Generate share ID
+        share_id = generate_share_id()
+        shared_files[share_id] = final_name
+
+        # Store metadata
+        uploaded_files[final_name] = {
+            "path": path,
+            "expires_at": None,  # No expiry for drive files
+            "original_name": file.filename,
+            "size": file_size,
+            "encrypted_size": len(encrypted_content),
+            "created_at": datetime.utcnow(),
+            "encryption_key": base64.b64encode(file_key).decode(),
+            "hmac": file_hmac,
+            "downloads": 0,
+            "owner_session": session_id if not is_admin else "admin",
+            "is_shared": False,
+            "share_id": share_id
+        }
+        save_uploaded_files()
+
+        # Set session cookie
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            max_age=30*24*60*60,
+            httponly=True,
+            samesite="lax"
+        )
+
+        return {
+            "success": True,
+            "filename": final_name,
+            "original_name": file.filename,
+            "size": file_size,
+            "created_at": datetime.utcnow().isoformat(),
+            "share_id": share_id,
+            "share_url": f"https://nauval.cloud/f/{share_id}"
+        }
+    except Exception as e:
+        logger.error(f"Drive upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files/list")
+async def list_files(request: Request, response: Response):
+    """List files - admin sees all, public sees only their own files"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        # Set session cookie for public users
+        if not is_admin:
+            response.set_cookie(
+                key="session_id",
+                value=session_id,
+                max_age=30*24*60*60,
+                httponly=True,
+                samesite="lax"
+            )
+
+        files_list = []
+        for filename, data in uploaded_files.items():
+            # Admin sees all files with full details
+            if is_admin:
+                files_list.append({
+                    "filename": filename,
+                    "original_name": data.get("original_name", filename),
+                    "size": data.get("size", 0),
+                    "encrypted_size": data.get("encrypted_size", 0),
+                    "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+                    "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+                    "downloads": data.get("downloads", 0),
+                    "last_accessed": data.get("last_accessed").isoformat() if data.get("last_accessed") else None,
+                    "is_shared": data.get("is_shared", False),
+                    "owner_session": data.get("owner_session", "unknown"),
+                    "is_mine": True  # Admin owns everything
+                })
+            # Public only sees their own files
+            elif data.get("owner_session") == session_id:
+                files_list.append({
+                    "filename": filename,
+                    "original_name": data.get("original_name", filename),
+                    "size": data.get("size", 0),
+                    "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+                    "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+                    "downloads": data.get("downloads", 0),
+                    "is_shared": data.get("is_shared", False),
+                    "is_mine": True
+                })
+
+        # Sort by creation date (newest first)
+        files_list.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+        return {
+            "files": files_list,
+            "total": len(files_list),
+            "is_admin": is_admin
+        }
+    except Exception as e:
+        logger.error(f"Error listing files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/files/share/{filename}")
+async def share_file(filename: str, request: Request):
+    """Share/unshare a file - users can share their own files, admin can share any"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        file_data = uploaded_files[filename]
+
+        # Check ownership - must be owner or admin
+        if not is_admin and file_data.get("owner_session") != session_id:
+            raise HTTPException(status_code=403, detail="You can only share your own files")
+
+        # Toggle share status
+        current_status = file_data.get("is_shared", False)
+        uploaded_files[filename]["is_shared"] = not current_status
+        save_uploaded_files()
+
+        return {
+            "success": True,
+            "is_shared": uploaded_files[filename]["is_shared"],
+            "message": f"File {'shared' if uploaded_files[filename]['is_shared'] else 'unshared'}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sharing file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/f/{share_id}")
+async def preview_file_by_share(share_id: str):
+    """Serve file preview page by share ID"""
+    return FileResponse("preview.html")
+
+@app.get("/api/file/{share_id}")
+async def get_file_info_by_share(share_id: str, request: Request):
+    """Get file info by share ID - public access"""
+    try:
+        # Get filename from share_id
+        if share_id not in shared_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        filename = shared_files[share_id]
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        data = uploaded_files[filename]
+
+        return {
+            "filename": filename,
+            "original_name": data.get("original_name", filename),
+            "size": data.get("size", 0),
+            "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+            "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+            "downloads": data.get("downloads", 0),
+            "download_url": f"/download/{filename}",
+            "share_url": f"https://nauval.cloud/f/{share_id}",
+            "file_type": filename.split('.')[-1] if '.' in filename else 'unknown'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting file info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/preview/{filename}")
+async def preview_file_page(filename: str):
+    """Serve file preview page (legacy - for old links)"""
+    return FileResponse("preview.html")
+
+@app.get("/api/files/info/{filename}")
+async def get_file_info(filename: str, request: Request):
+    """Get file info for preview (legacy - for old links)"""
+    try:
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        data = uploaded_files[filename]
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        # Check if file is accessible
+        # Allow if: file is shared OR user is admin OR user is owner
+        is_shared = data.get("is_shared", False)
+        is_owner = data.get("owner_session") == session_id
+
+        if not (is_shared or is_admin or is_owner):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        return {
+            "filename": filename,
+            "original_name": data.get("original_name", filename),
+            "size": data.get("size", 0),
+            "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+            "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
+            "downloads": data.get("downloads", 0),
+            "download_url": f"/download/{filename}",
+            "file_type": filename.split('.')[-1] if '.' in filename else 'unknown'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting file info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/files/delete/{filename}")
+async def delete_file(filename: str, request: Request):
+    """Delete a file - users can delete their own files, admin can delete any"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        file_data = uploaded_files[filename]
+
+        # Check ownership - must be owner or admin
+        if not is_admin and file_data.get("owner_session") != session_id:
+            raise HTTPException(status_code=403, detail="You can only delete your own files")
+
+        file_path = file_data.get("path")
+
+        # Delete physical file
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+
+        # Remove from database
+        del uploaded_files[filename]
+        save_uploaded_files()
+
+        return {"success": True, "message": f"File {filename} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/files/rename/{filename}")
+async def rename_file(filename: str, request: Request):
+    """Rename a file - users can rename their own files, admin can rename any"""
+    try:
+        is_admin = verify_admin_token(request)
+        session_id = get_or_create_session(request)
+
+        # Get new name from JSON body
+        body = await request.json()
+        new_name = body.get("new_name")
+
+        if not new_name:
+            raise HTTPException(status_code=400, detail="new_name is required")
+
+        if filename not in uploaded_files:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        file_data = uploaded_files[filename]
+
+        # Check ownership - must be owner or admin
+        if not is_admin and file_data.get("owner_session") != session_id:
+            raise HTTPException(status_code=403, detail="You can only rename your own files")
+
+        if new_name in uploaded_files:
+            raise HTTPException(status_code=400, detail="File with new name already exists")
+
+        # Get file data
+        file_data = uploaded_files[filename]
+        old_path = file_data.get("path")
+
+        # Create new path
+        storage_dir = os.path.dirname(old_path)
+        new_path = os.path.join(storage_dir, new_name + ".enc")
+
+        # Rename physical file
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+
+        # Update database
+        file_data["path"] = new_path
+        file_data["original_name"] = new_name
+        uploaded_files[new_name] = file_data
+        del uploaded_files[filename]
+        save_uploaded_files()
+
+        return {"success": True, "message": f"File renamed to {new_name}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error renaming file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/files/stats")
+async def get_storage_stats(request: Request):
+    """Get storage statistics"""
+    try:
+        total_size = 0
+        total_files = len(uploaded_files)
+
+        for filename, data in uploaded_files.items():
+            total_size += data.get("size", 0)
+
+        return {
+            "total_files": total_files,
+            "total_size": total_size,
+            "total_downloads": sum(data.get("downloads", 0) for data in uploaded_files.values()),
+        }
+    except Exception as e:
+        logger.error(f"Error getting stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/files/search")
+async def search_files(q: str, request: Request):
+    """Search files by name"""
+    try:
+        query = q.lower()
+        results = []
+
+        for filename, data in uploaded_files.items():
+            if query in filename.lower() or query in data.get("original_name", "").lower():
+                results.append({
+                    "filename": filename,
+                    "original_name": data.get("original_name", filename),
+                    "size": data.get("size", 0),
+                    "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
+                })
+
+        return {"results": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"Error searching files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== FILE SYSTEM BROWSER (ADMIN ONLY) =====
+
+@app.get("/api/filesystem/browse")
+async def browse_filesystem(path: str = "/", request: Request = None):
+    """Browse server file system (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        # Security: prevent path traversal attacks
+        real_path = os.path.abspath(path)
+
+        if not os.path.exists(real_path):
+            raise HTTPException(status_code=404, detail="Path not found")
+
+        if not os.path.isdir(real_path):
+            raise HTTPException(status_code=400, detail="Path is not a directory")
+
+        items = []
+        try:
+            for item_name in os.listdir(real_path):
+                item_path = os.path.join(real_path, item_name)
+                try:
+                    stat = os.stat(item_path)
+                    is_dir = os.path.isdir(item_path)
+                    items.append({
+                        "name": item_name,
+                        "path": item_path,
+                        "is_dir": is_dir,
+                        "size": stat.st_size if not is_dir else 0,
+                        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        "permissions": oct(stat.st_mode)[-3:]
+                    })
+                except (PermissionError, OSError):
+                    # Skip files we can't access
+                    continue
+        except PermissionError:
+            raise HTTPException(status_code=403, detail="Permission denied")
+
+        # Sort: directories first, then files
+        items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+
+        return {
+            "current_path": real_path,
+            "parent_path": os.path.dirname(real_path) if real_path != "/" else None,
+            "items": items,
+            "total": len(items)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error browsing filesystem: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/filesystem/copy-to-drive")
+async def copy_to_drive(request: Request, file_path: str = Form(...)):
+    """Copy file from server filesystem to CloudShare Drive (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        real_path = os.path.abspath(file_path)
+
+        if not os.path.exists(real_path):
+            raise HTTPException(status_code=404, detail="File not found")
+
+        if not os.path.isfile(real_path):
+            raise HTTPException(status_code=400, detail="Path is not a file")
+
+        # Read file
+        with open(real_path, "rb") as f:
+            file_content = f.read()
+
+        file_size = len(file_content)
+
+        if file_size > 500 * 1024 * 1024:  # 500MB limit for admin
+            raise HTTPException(status_code=400, detail="File too large (max 500MB)")
+
+        # Encrypt file
+        file_key = get_random_bytes(32)
+        nonce = get_random_bytes(12)
+        cipher = AES.new(file_key, AES.MODE_GCM, nonce=nonce)
+        ciphertext, tag = cipher.encrypt_and_digest(file_content)
+        encrypted_content = nonce + tag + ciphertext
+        file_hmac = compute_hmac(encrypted_content)
+
+        # Generate filename
+        original_name = os.path.basename(real_path)
+        ext = os.path.splitext(original_name)[1]
+        name = generate_code()
+        final_name = f"{name}{ext}"
+        internal_name = f"{final_name}.enc"
+        dest_path = os.path.join(STORAGE_DIR, internal_name)
+
+        # Save file
+        with open(dest_path, "wb") as buffer:
+            buffer.write(encrypted_content)
+
+        # Generate share ID
+        share_id = generate_share_id()
+        shared_files[share_id] = final_name
+
+        # Store metadata
+        session_id = get_or_create_session(request)
+        uploaded_files[final_name] = {
+            "original_name": original_name,
+            "size": file_size,
+            "created_at": datetime.utcnow(),
+            "downloads": 0,
+            "file_key": base64.b64encode(file_key).decode(),
+            "hmac": file_hmac,
+            "owner_session": session_id,
+            "is_shared": True,
+            "share_id": share_id
+        }
+
+        return {
+            "success": True,
+            "filename": final_name,
+            "original_name": original_name,
+            "size": file_size,
+            "share_id": share_id,
+            "share_url": f"/f/{share_id}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error copying file to drive: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/filesystem/delete")
+async def delete_filesystem_item(request: Request, path: str = Form(...)):
+    """Delete file or directory from server filesystem (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        real_path = os.path.abspath(path)
+
+        if not os.path.exists(real_path):
+            raise HTTPException(status_code=404, detail="Path not found")
+
+        # Prevent deleting critical system paths
+        critical_paths = ["/", "/bin", "/boot", "/dev", "/etc", "/lib", "/proc", "/root", "/sbin", "/sys", "/usr", "/var"]
+        if real_path in critical_paths or any(real_path.startswith(cp + "/") for cp in critical_paths):
+            raise HTTPException(status_code=403, detail="Cannot delete system directories")
+
+        if os.path.isdir(real_path):
+            shutil.rmtree(real_path)
+        else:
+            os.remove(real_path)
+
+        return {"success": True, "message": "Deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting filesystem item: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/filesystem/mkdir")
+async def create_directory(request: Request, path: str = Form(...), name: str = Form(...)):
+    """Create new directory in server filesystem (admin only)"""
+    if not verify_admin_token(request):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        parent_path = os.path.abspath(path)
+        new_path = os.path.join(parent_path, name)
+
+        if os.path.exists(new_path):
+            raise HTTPException(status_code=400, detail="Directory already exists")
+
+        os.makedirs(new_path)
+
+        return {"success": True, "path": new_path}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating directory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/filemanager")
+async def file_manager_page():
+    """Serve the dual-panel file manager (admin only)"""
+    return FileResponse("filemanager.html")
+
+
+# ===== SFTP CLIENT =====
+
+# Store active SFTP connections per session
+sftp_connections = {}
+
+@app.post("/api/sftp/connect")
+async def sftp_connect(
+    request: Request,
+    host: str = Form(...),
+    port: int = Form(22),
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    """Connect to SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        # Close existing connection if any
+        if session_id in sftp_connections:
+            try:
+                sftp_connections[session_id]['sftp'].close()
+                sftp_connections[session_id]['ssh'].close()
+            except:
+                pass
+
+        # Create new connection
+        ssh = SSHClient()
+        ssh.set_missing_host_key_policy(AutoAddPolicy())
+
+        ssh.connect(
+            hostname=host,
+            port=port,
+            username=username,
+            password=password,
+            timeout=10
+        )
+
+        sftp = ssh.open_sftp()
+
+        # Store connection
+        sftp_connections[session_id] = {
+            'ssh': ssh,
+            'sftp': sftp,
+            'host': host,
+            'username': username
+        }
+
+        # Get home directory
+        try:
+            home_dir = sftp.normalize('.')
+        except:
+            home_dir = '/'
+
+        return {
+            "success": True,
+            "message": f"Connected to {host}",
+            "home_dir": home_dir
+        }
+
+    except Exception as e:
+        logger.error(f"SFTP connection error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sftp/list")
+async def sftp_list_directory(path: str = "/", request: Request = None):
+    """List files in SFTP directory"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        items = []
+        for attr in sftp.listdir_attr(path):
+            is_dir = stat.S_ISDIR(attr.st_mode)
+            items.append({
+                "name": attr.filename,
+                "path": os.path.join(path, attr.filename),
+                "is_dir": is_dir,
+                "size": attr.st_size if not is_dir else 0,
+                "modified": datetime.fromtimestamp(attr.st_mtime).isoformat() if attr.st_mtime else None,
+                "permissions": oct(attr.st_mode)[-3:] if attr.st_mode else "000"
+            })
+
+        # Sort: directories first, then files
+        items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+
+        return {
+            "current_path": path,
+            "parent_path": os.path.dirname(path) if path != "/" else None,
+            "items": items,
+            "total": len(items)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"SFTP list error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/upload")
+async def sftp_upload_file(
+    request: Request,
+    remote_path: str = Form(...),
+    file: UploadFile = File(...)
+):
+    """Upload file to SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Read file content
+        file_content = await file.read()
+
+        # Write to SFTP
+        with sftp.open(remote_path, 'wb') as remote_file:
+            remote_file.write(file_content)
+
+        return {
+            "success": True,
+            "message": f"Uploaded {file.filename} to {remote_path}"
+        }
+
+    except Exception as e:
+        logger.error(f"SFTP upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sftp/download")
+async def sftp_download_file(remote_path: str, request: Request):
+    """Download file from SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Read file content
+        with sftp.open(remote_path, 'rb') as remote_file:
+            file_content = remote_file.read()
+
+        filename = os.path.basename(remote_path)
+
+        return StreamingResponse(
+            BytesIO(file_content),
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        logger.error(f"SFTP download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/delete")
+async def sftp_delete_item(request: Request, path: str = Form(...)):
+    """Delete file or directory from SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Check if directory
+        try:
+            attr = sftp.stat(path)
+            is_dir = stat.S_ISDIR(attr.st_mode)
+
+            if is_dir:
+                sftp.rmdir(path)
+            else:
+                sftp.remove(path)
+        except:
+            # If stat fails, try remove
+            sftp.remove(path)
+
+        return {"success": True, "message": "Deleted successfully"}
+
+    except Exception as e:
+        logger.error(f"SFTP delete error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/mkdir")
+async def sftp_create_directory(request: Request, path: str = Form(...), name: str = Form(...)):
+    """Create directory on SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        new_path = os.path.join(path, name)
+        sftp.mkdir(new_path)
+
+        return {"success": True, "path": new_path}
+
+    except Exception as e:
+        logger.error(f"SFTP mkdir error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sftp/read")
+async def sftp_read_file(remote_path: str, request: Request):
+    """Read file content from SFTP server for editing"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Read file content
+        with sftp.open(remote_path, 'r') as remote_file:
+            content = remote_file.read()
+
+        # Try to decode as text
+        try:
+            text_content = content.decode('utf-8')
+        except UnicodeDecodeError:
+            # Try other encodings
+            try:
+                text_content = content.decode('latin-1')
+            except:
+                raise HTTPException(status_code=400, detail="File is not a text file")
+
+        return {
+            "success": True,
+            "content": text_content,
+            "path": remote_path,
+            "filename": os.path.basename(remote_path)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"SFTP read error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/write")
+async def sftp_write_file(
+    request: Request,
+    remote_path: str = Form(...),
+    content: str = Form(...)
+):
+    """Write/save file content to SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Write content to file
+        with sftp.open(remote_path, 'w') as remote_file:
+            remote_file.write(content.encode('utf-8'))
+
+        return {
+            "success": True,
+            "message": f"File saved: {os.path.basename(remote_path)}"
+        }
+
+    except Exception as e:
+        logger.error(f"SFTP write error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/disconnect")
+async def sftp_disconnect(request: Request):
+    """Disconnect from SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id in sftp_connections:
+            try:
+                sftp_connections[session_id]['sftp'].close()
+                sftp_connections[session_id]['ssh'].close()
+            except:
+                pass
+            del sftp_connections[session_id]
+
+        return {"success": True, "message": "Disconnected from SFTP server"}
+
+    except Exception as e:
+        logger.error(f"SFTP disconnect error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sftp/status")
+async def sftp_status(request: Request):
+    """Check SFTP connection status"""
+    session_id = get_or_create_session(request)
+
+    if session_id in sftp_connections:
+        conn = sftp_connections[session_id]
+        return {
+            "connected": True,
+            "host": conn['host'],
+            "username": conn['username']
+        }
+    else:
+        return {"connected": False}
+
+
+@app.get("/sftpmanager")
+async def sftp_manager_page():
+    """Serve the SFTP manager page"""
+    return FileResponse("sftpmanager.html")

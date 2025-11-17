@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SFTP Manager - CloudShare</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.5/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.5/ext-language_tools.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #00acc1;
+            --primary-dark: #00838f;
+            --bg-dark: #1e1e1e;
+            --bg-darker: #141414;
+            --bg-panel: #252525;
+            --border-color: #3a3a3a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --hover-bg: #333;
+            --success: #4caf50;
+            --danger: #f44336;
+            --warning: #ff9800;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--bg-darker);
+            padding: 0.8rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--bg-panel);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            padding: 1rem 1.5rem;
+            background: var(--bg-darker);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .breadcrumb {
+            padding: 0.8rem 1.5rem;
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem 1rem;
+            margin-bottom: 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 1rem;
+        }
+
+        .file-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .file-icon {
+            width: 40px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .file-icon.folder {
+            color: #ffc107;
+        }
+
+        .file-icon.file {
+            color: #64b5f6;
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toolbar {
+            padding: 0.8rem 1.5rem;
+            background: var(--bg-darker);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-panel);
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid var(--border-color);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-darker);
+            color: var(--text-primary);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: none;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        .connection-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .connection-status.connected {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--success);
+        }
+
+        .connection-status.disconnected {
+            background: rgba(244, 67, 54, 0.2);
+            color: var(--danger);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-exchange-alt"></i>
+            <span>SFTP Manager</span>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <div class="connection-status disconnected" id="status-badge">
+                <i class="fas fa-circle" style="font-size: 0.6rem;"></i>
+                <span>Disconnected</span>
+            </div>
+            <button class="btn btn-secondary" onclick="window.location.href='/drive'">
+                <i class="fas fa-arrow-left"></i>
+                Back to Drive
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Left Panel: Local Device -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-laptop"></i>
+                    Local Device
+                </div>
+                <button class="btn btn-primary" onclick="selectLocalFolder()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                    <i class="fas fa-folder-open"></i>
+                    Open Folder
+                </button>
+            </div>
+
+            <div class="breadcrumb" id="local-breadcrumb">
+                Click "Open Folder" to browse your device
+            </div>
+
+            <div class="file-list" id="local-list">
+                <div class="empty-state">
+                    <i class="fas fa-laptop" style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                    <p>No folder selected</p>
+                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">Click "Open Folder" to browse files</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <button class="btn btn-secondary" onclick="refreshLocal()" id="refresh-local-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: none;">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel: SFTP Server -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-server"></i>
+                    SFTP Server
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-primary" onclick="showConnectModal()" id="connect-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                        <i class="fas fa-plug"></i>
+                        Connect
+                    </button>
+                    <button class="btn btn-secondary" onclick="createFolderSFTP()" id="mkdir-sftp-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; display: none;">
+                        <i class="fas fa-folder-plus"></i>
+                    </button>
+                    <button class="btn btn-secondary" onclick="disconnectSFTP()" id="disconnect-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; display: none;">
+                        <i class="fas fa-times"></i>
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+
+            <div class="breadcrumb" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button class="icon-btn" onclick="goUpFolder()" id="up-btn" title="Go up" style="display: none;">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+                <span id="sftp-breadcrumb">Not connected</span>
+            </div>
+
+            <div class="file-list" id="sftp-list">
+                <div class="empty-state">
+                    <i class="fas fa-server" style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                    <p>Not connected to SFTP server</p>
+                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">Click "Connect" to start</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <button class="btn btn-secondary" onclick="refreshSFTP()" id="refresh-sftp-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: none;">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connect Modal -->
+    <div class="modal" id="connect-modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1.5rem;">Connect to SFTP Server</h2>
+            <form onsubmit="connectSFTP(event)">
+                <div class="form-group">
+                    <label>Host</label>
+                    <input type="text" id="sftp-host" required placeholder="example.com">
+                </div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="number" id="sftp-port" value="22" required>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="sftp-username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="sftp-password" required>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">
+                        <i class="fas fa-plug"></i>
+                        Connect
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('connect-modal')">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Folder Modal -->
+    <div class="modal" id="mkdir-modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1.5rem;">Create New Folder</h2>
+            <form onsubmit="submitCreateFolderSFTP(event)">
+                <div class="form-group">
+                    <label>Folder Name</label>
+                    <input type="text" id="folder-name" required>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">
+                        Create
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('mkdir-modal')">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- File Editor Modal -->
+    <div class="modal" id="editor-modal">
+        <div class="modal-content" style="max-width: 90%; max-height: 90vh; width: 1200px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 id="editor-filename" style="margin: 0;">Edit File</h2>
+                <button class="btn btn-secondary" onclick="closeModal('editor-modal')" style="padding: 0.5rem 1rem;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <div id="file-content" style="width: 100%; height: 500px; border: 1px solid var(--border-color); border-radius: 8px;"></div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeModal('editor-modal')">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+                <button class="btn btn-primary" onclick="saveFile()">
+                    <i class="fas fa-save"></i>
+                    Save File
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <span id="toast-message">Success!</span>
+    </div>
+
+    <script>
+        let localFolderHandle = null;
+        let localFiles = [];
+        let sftpPath = '/';
+        let sftpFiles = [];
+        let isConnected = false;
+        let currentEditingFile = null;
+        let aceEditor = null;
+
+        // Check SFTP status on load
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkSFTPStatus();
+        });
+
+        async function checkSFTPStatus() {
+            try {
+                const response = await fetch('/api/sftp/status');
+                const data = await response.json();
+
+                if (data.connected) {
+                    isConnected = true;
+                    updateConnectionUI(true, data.host, data.username);
+                    await loadSFTP('/');
+                }
+            } catch (error) {
+                console.error('Error checking SFTP status:', error);
+            }
+        }
+
+        // Local folder selection
+        async function selectLocalFolder() {
+            if (!window.showDirectoryPicker) {
+                alert('⚠️ Your browser does not support File System Access API. Please use Chrome/Edge.');
+                return;
+            }
+
+            try {
+                localFolderHandle = await window.showDirectoryPicker();
+                document.getElementById('local-breadcrumb').textContent = localFolderHandle.name;
+                document.getElementById('refresh-local-btn').style.display = 'block';
+                await loadLocal();
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    showToast('Error selecting folder: ' + error.message);
+                }
+            }
+        }
+
+        async function loadLocal() {
+            if (!localFolderHandle) return;
+
+            try {
+                localFiles = [];
+                for await (const entry of localFolderHandle.values()) {
+                    localFiles.push({
+                        name: entry.name,
+                        kind: entry.kind,
+                        handle: entry
+                    });
+                }
+
+                localFiles.sort((a, b) => {
+                    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+                    return a.name.localeCompare(b.name);
+                });
+
+                renderLocal();
+            } catch (error) {
+                showToast('Error loading local files: ' + error.message);
+            }
+        }
+
+        function renderLocal() {
+            const list = document.getElementById('local-list');
+
+            if (localFiles.length === 0) {
+                list.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><p>Empty folder</p></div>';
+                return;
+            }
+
+            let html = '';
+            localFiles.forEach(file => {
+                const isDir = file.kind === 'directory';
+                const icon = isDir ? 'fa-folder' : getFileIcon(file.name);
+                const iconClass = isDir ? 'folder' : 'file';
+
+                html += `
+                    <div class="file-item">
+                        <div class="file-icon ${iconClass}">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div class="file-info">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-meta">${isDir ? 'Folder' : 'File'}</div>
+                        </div>
+                        ${!isDir ? `<button class="icon-btn" onclick="uploadToSFTP('${file.name}')" title="Upload to SFTP"><i class="fas fa-arrow-right"></i></button>` : ''}
+                    </div>
+                `;
+            });
+
+            list.innerHTML = html;
+        }
+
+        function refreshLocal() {
+            loadLocal();
+        }
+
+        // SFTP Connection
+        function showConnectModal() {
+            document.getElementById('connect-modal').classList.add('show');
+        }
+
+        async function connectSFTP(event) {
+            event.preventDefault();
+
+            const host = document.getElementById('sftp-host').value;
+            const port = document.getElementById('sftp-port').value;
+            const username = document.getElementById('sftp-username').value;
+            const password = document.getElementById('sftp-password').value;
+
+            try {
+                const formData = new FormData();
+                formData.append('host', host);
+                formData.append('port', port);
+                formData.append('username', username);
+                formData.append('password', password);
+
+                const response = await fetch('/api/sftp/connect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Connection failed');
+                }
+
+                const data = await response.json();
+                isConnected = true;
+                sftpPath = data.home_dir || '/';
+
+                closeModal('connect-modal');
+                updateConnectionUI(true, host, username);
+                showToast('✅ Connected to ' + host);
+                await loadSFTP(sftpPath);
+
+            } catch (error) {
+                showToast('❌ Connection failed: ' + error.message);
+            }
+        }
+
+        async function disconnectSFTP() {
+            if (!confirm('Disconnect from SFTP server?')) return;
+
+            try {
+                await fetch('/api/sftp/disconnect', { method: 'POST' });
+                isConnected = false;
+                updateConnectionUI(false);
+                document.getElementById('sftp-list').innerHTML = '<div class="empty-state"><i class="fas fa-server" style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;"></i><p>Disconnected</p></div>';
+                showToast('Disconnected from SFTP server');
+            } catch (error) {
+                showToast('Error disconnecting: ' + error.message);
+            }
+        }
+
+        function updateConnectionUI(connected, host = '', username = '') {
+            const statusBadge = document.getElementById('status-badge');
+            const connectBtn = document.getElementById('connect-btn');
+            const disconnectBtn = document.getElementById('disconnect-btn');
+            const mkdirBtn = document.getElementById('mkdir-sftp-btn');
+            const refreshBtn = document.getElementById('refresh-sftp-btn');
+
+            if (connected) {
+                statusBadge.className = 'connection-status connected';
+                statusBadge.innerHTML = `<i class="fas fa-circle" style="font-size: 0.6rem;"></i><span>Connected: ${username}@${host}</span>`;
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'block';
+                mkdirBtn.style.display = 'block';
+                refreshBtn.style.display = 'block';
+            } else {
+                statusBadge.className = 'connection-status disconnected';
+                statusBadge.innerHTML = '<i class="fas fa-circle" style="font-size: 0.6rem;"></i><span>Disconnected</span>';
+                connectBtn.style.display = 'block';
+                disconnectBtn.style.display = 'none';
+                mkdirBtn.style.display = 'none';
+                refreshBtn.style.display = 'none';
+            }
+        }
+
+        async function loadSFTP(path) {
+            if (!isConnected) return;
+
+            try {
+                const response = await fetch(`/api/sftp/list?path=${encodeURIComponent(path)}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to list directory');
+                }
+
+                const data = await response.json();
+                sftpPath = data.current_path;
+                sftpFiles = data.items;
+
+                renderSFTP();
+                document.getElementById('sftp-breadcrumb').textContent = sftpPath;
+
+                // Show/hide up button
+                const upBtn = document.getElementById('up-btn');
+                if (sftpPath !== '/' && sftpPath !== '') {
+                    upBtn.style.display = 'flex';
+                } else {
+                    upBtn.style.display = 'none';
+                }
+
+            } catch (error) {
+                showToast('Error loading SFTP: ' + error.message);
+            }
+        }
+
+        function renderSFTP() {
+            const list = document.getElementById('sftp-list');
+
+            if (sftpFiles.length === 0) {
+                list.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><p>Empty folder</p></div>';
+                return;
+            }
+
+            let html = '';
+            sftpFiles.forEach(file => {
+                const isDir = file.is_dir;
+                const icon = isDir ? 'fa-folder' : getFileIcon(file.name);
+                const iconClass = isDir ? 'folder' : 'file';
+                const isTextFile = !isDir && isEditableFile(file.name);
+
+                html += `
+                    <div class="file-item" ${isDir ? `onclick="loadSFTP('${file.path}')" style="cursor: pointer;"` : ''}>
+                        <div class="file-icon ${iconClass}">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div class="file-info">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-meta">${isDir ? 'Folder' : formatFileSize(file.size)} • ${file.permissions}</div>
+                        </div>
+                        ${isTextFile ? `<button class="icon-btn" onclick="event.stopPropagation(); openEditor('${file.path}', '${file.name}')" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
+                        ${!isDir ? `<button class="icon-btn" onclick="event.stopPropagation(); downloadFromSFTP('${file.path}', '${file.name}')" title="Download"><i class="fas fa-download"></i></button>` : ''}
+                        <button class="icon-btn" onclick="event.stopPropagation(); deleteSFTP('${file.path}')" title="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+            });
+
+            list.innerHTML = html;
+        }
+
+        function isEditableFile(filename) {
+            const editableExtensions = ['txt', 'js', 'py', 'html', 'css', 'json', 'xml', 'md', 'yml', 'yaml',
+                                       'sh', 'conf', 'cfg', 'ini', 'log', 'sql', 'php', 'java', 'c', 'cpp',
+                                       'h', 'hpp', 'ts', 'jsx', 'tsx', 'go', 'rs', 'rb', 'pl', 'lua'];
+            const ext = filename.split('.').pop().toLowerCase();
+            return editableExtensions.includes(ext);
+        }
+
+        function refreshSFTP() {
+            loadSFTP(sftpPath);
+        }
+
+        function goUpFolder() {
+            if (sftpPath === '/' || sftpPath === '') return;
+
+            // Get parent directory
+            const parentPath = sftpPath.substring(0, sftpPath.lastIndexOf('/'));
+            loadSFTP(parentPath || '/');
+        }
+
+        async function uploadToSFTP(filename) {
+            if (!isConnected) {
+                showToast('❌ Not connected to SFTP server');
+                return;
+            }
+
+            if (!localFolderHandle) return;
+
+            try {
+                const fileHandle = localFiles.find(f => f.name === filename && f.kind === 'file')?.handle;
+                if (!fileHandle) return;
+
+                const file = await fileHandle.getFile();
+                const remotePath = sftpPath + '/' + filename;
+
+                const formData = new FormData();
+                formData.append('remote_path', remotePath);
+                formData.append('file', file);
+
+                const response = await fetch('/api/sftp/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+
+                showToast('✅ Uploaded ' + filename);
+                await loadSFTP(sftpPath);
+
+            } catch (error) {
+                showToast('❌ Upload failed: ' + error.message);
+            }
+        }
+
+        async function downloadFromSFTP(path, filename) {
+            try {
+                window.open(`/api/sftp/download?remote_path=${encodeURIComponent(path)}`, '_blank');
+            } catch (error) {
+                showToast('Error downloading: ' + error.message);
+            }
+        }
+
+        async function deleteSFTP(path) {
+            if (!confirm('Delete this item?')) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('path', path);
+
+                const response = await fetch('/api/sftp/delete', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Delete failed');
+
+                showToast('✅ Deleted successfully');
+                await loadSFTP(sftpPath);
+
+            } catch (error) {
+                showToast('❌ Delete failed: ' + error.message);
+            }
+        }
+
+        function createFolderSFTP() {
+            document.getElementById('mkdir-modal').classList.add('show');
+        }
+
+        async function submitCreateFolderSFTP(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('folder-name').value;
+
+            try {
+                const formData = new FormData();
+                formData.append('path', sftpPath);
+                formData.append('name', name);
+
+                const response = await fetch('/api/sftp/mkdir', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Failed to create folder');
+
+                closeModal('mkdir-modal');
+                showToast('✅ Folder created');
+                await loadSFTP(sftpPath);
+
+            } catch (error) {
+                showToast('❌ Error: ' + error.message);
+            }
+        }
+
+        // File Editor Functions
+        async function openEditor(path, filename) {
+            try {
+                showToast('📖 Loading file...');
+
+                const response = await fetch(`/api/sftp/read?remote_path=${encodeURIComponent(path)}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to read file');
+                }
+
+                const data = await response.json();
+                currentEditingFile = path;
+
+                document.getElementById('editor-filename').textContent = 'Edit: ' + filename;
+                document.getElementById('editor-modal').classList.add('show');
+
+                // Initialize Ace Editor if not already done
+                if (!aceEditor) {
+                    aceEditor = ace.edit("file-content");
+                    aceEditor.setTheme("ace/theme/monokai");
+                    aceEditor.setOptions({
+                        fontSize: "14px",
+                        showPrintMargin: false,
+                        enableBasicAutocompletion: true,
+                        enableLiveAutocompletion: true
+                    });
+                }
+
+                // Set syntax mode based on file extension
+                const ext = filename.split('.').pop().toLowerCase();
+                const mode = getAceMode(ext);
+                aceEditor.session.setMode(mode);
+
+                // Set file content
+                aceEditor.setValue(data.content, -1);
+
+                showToast('✅ File loaded');
+
+            } catch (error) {
+                showToast('❌ Error: ' + error.message);
+            }
+        }
+
+        async function saveFile() {
+            if (!currentEditingFile) return;
+
+            try {
+                const content = aceEditor ? aceEditor.getValue() : '';
+
+                showToast('💾 Saving file...');
+
+                const formData = new FormData();
+                formData.append('remote_path', currentEditingFile);
+                formData.append('content', content);
+
+                const response = await fetch('/api/sftp/write', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Failed to save file');
+
+                const data = await response.json();
+                closeModal('editor-modal');
+                showToast('✅ ' + data.message);
+
+                // Refresh file list
+                await loadSFTP(sftpPath);
+
+            } catch (error) {
+                showToast('❌ Save failed: ' + error.message);
+            }
+        }
+
+        function getAceMode(ext) {
+            const modeMap = {
+                'js': 'ace/mode/javascript',
+                'jsx': 'ace/mode/javascript',
+                'ts': 'ace/mode/typescript',
+                'tsx': 'ace/mode/typescript',
+                'py': 'ace/mode/python',
+                'php': 'ace/mode/php',
+                'java': 'ace/mode/java',
+                'c': 'ace/mode/c_cpp',
+                'cpp': 'ace/mode/c_cpp',
+                'h': 'ace/mode/c_cpp',
+                'hpp': 'ace/mode/c_cpp',
+                'go': 'ace/mode/golang',
+                'rs': 'ace/mode/rust',
+                'rb': 'ace/mode/ruby',
+                'pl': 'ace/mode/perl',
+                'lua': 'ace/mode/lua',
+                'html': 'ace/mode/html',
+                'css': 'ace/mode/css',
+                'json': 'ace/mode/json',
+                'xml': 'ace/mode/xml',
+                'md': 'ace/mode/markdown',
+                'yml': 'ace/mode/yaml',
+                'yaml': 'ace/mode/yaml',
+                'sh': 'ace/mode/sh',
+                'bash': 'ace/mode/sh',
+                'sql': 'ace/mode/sql',
+                'conf': 'ace/mode/text',
+                'cfg': 'ace/mode/ini',
+                'ini': 'ace/mode/ini',
+                'log': 'ace/mode/text',
+                'txt': 'ace/mode/text'
+            };
+
+            return modeMap[ext] || 'ace/mode/text';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const iconMap = {
+                'pdf': 'fa-file-pdf',
+                'doc': 'fa-file-word', 'docx': 'fa-file-word',
+                'jpg': 'fa-file-image', 'jpeg': 'fa-file-image', 'png': 'fa-file-image',
+                'mp4': 'fa-file-video',
+                'mp3': 'fa-file-audio',
+                'zip': 'fa-file-archive',
+                'txt': 'fa-file-alt',
+                'js': 'fa-file-code', 'py': 'fa-file-code'
+            };
+            return iconMap[ext] || 'fa-file';
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

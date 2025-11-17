@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Preview - CloudShare</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #4285f4;
+            --primary-hover: #3367d6;
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --border-color: #dadce0;
+            --success-color: #1e8e3e;
+            --danger-color: #d93025;
+            --warning-color: #f9ab00;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo i {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex: 1;
+        }
+
+        .preview-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        /* Preview Area */
+        .preview-area {
+            background: #000;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .preview-area img,
+        .preview-area video {
+            max-width: 100%;
+            max-height: 600px;
+            object-fit: contain;
+        }
+
+        .preview-area audio {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .file-icon-large {
+            font-size: 8rem;
+            color: var(--primary-color);
+            opacity: 0.5;
+        }
+
+        .preview-placeholder {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .preview-placeholder i {
+            font-size: 6rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* File Info */
+        .file-info {
+            padding: 2rem;
+        }
+
+        .file-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            gap: 1rem;
+        }
+
+        .file-title {
+            flex: 1;
+        }
+
+        .file-name {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            word-break: break-word;
+        }
+
+        .file-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            background: var(--background);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(66,133,244,0.3);
+        }
+
+        .btn-secondary {
+            background: var(--background);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #e8eaed;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            padding: 1.5rem;
+            background: var(--background);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .expiry-warning {
+            background: #fff3cd;
+            border-left-color: var(--warning-color);
+        }
+
+        .expiry-danger {
+            background: #f8d7da;
+            border-left-color: var(--danger-color);
+        }
+
+        .expiry-warning .stat-value,
+        .expiry-danger .stat-value {
+            color: var(--danger-color);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .error i {
+            font-size: 1.5rem;
+        }
+
+        /* Copy Link Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--text-primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 0.8rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.show {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .file-header {
+                flex-direction: column;
+            }
+
+            .actions {
+                width: 100%;
+            }
+
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .file-name {
+                font-size: 1.3rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Share Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .share-link-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .share-link-input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .share-options {
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .share-btn {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--background);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .share-btn:hover {
+            background: #e8eaed;
+        }
+
+        .share-btn i {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <a href="/" class="logo">
+            <i class="fas fa-cloud"></i>
+            <span>CloudShare</span>
+        </a>
+        <div class="header-actions">
+            <a href="/drive" class="btn btn-secondary">
+                <i class="fas fa-folder"></i>
+                My Drive
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p style="margin-top: 1rem; color: var(--text-secondary);">Loading file...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="error" style="display: none;">
+            <i class="fas fa-exclamation-circle"></i>
+            <div>
+                <strong>Error</strong>
+                <p id="error-message">File not found or access denied</p>
+            </div>
+        </div>
+
+        <!-- Preview Card -->
+        <div id="preview-card" class="preview-card" style="display: none;">
+            <!-- Preview Area -->
+            <div class="preview-area" id="preview-area">
+                <!-- Content will be loaded here -->
+            </div>
+
+            <!-- File Info -->
+            <div class="file-info">
+                <div class="file-header">
+                    <div class="file-title">
+                        <h1 class="file-name" id="file-name">Loading...</h1>
+                        <div class="file-type" id="file-type">
+                            <i class="fas fa-file"></i>
+                            <span>Unknown</span>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <a href="#" id="download-btn" class="btn btn-primary" download>
+                            <i class="fas fa-download"></i>
+                            Download
+                        </a>
+                        <button class="btn btn-secondary" onclick="shareFile()">
+                            <i class="fas fa-share-alt"></i>
+                            Share
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">
+                            <i class="fas fa-hdd"></i>
+                            File Size
+                        </div>
+                        <div class="stat-value" id="file-size">-</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">
+                            <i class="fas fa-calendar-plus"></i>
+                            Uploaded
+                        </div>
+                        <div class="stat-value" id="created-at">-</div>
+                    </div>
+
+                    <div class="stat-card" id="expiry-card">
+                        <div class="stat-label">
+                            <i class="fas fa-clock"></i>
+                            Expires
+                        </div>
+                        <div class="stat-value" id="expires-at">-</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">
+                            <i class="fas fa-download"></i>
+                            Downloads
+                        </div>
+                        <div class="stat-value" id="downloads">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal" id="share-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Share File</h2>
+                <button class="close-btn" onclick="closeShareModal()">&times;</button>
+            </div>
+
+            <div class="share-link-container">
+                <input type="text" class="share-link-input" id="share-link" readonly>
+                <button class="btn btn-primary" onclick="copyShareLink()">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+
+            <div class="share-options">
+                <button class="share-btn" onclick="shareWhatsApp()">
+                    <i class="fab fa-whatsapp" style="color: #25D366;"></i>
+                    <div>
+                        <div style="font-weight: 500;">WhatsApp</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Share via WhatsApp</div>
+                    </div>
+                </button>
+
+                <button class="share-btn" onclick="shareTelegram()">
+                    <i class="fab fa-telegram" style="color: #0088cc;"></i>
+                    <div>
+                        <div style="font-weight: 500;">Telegram</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Share via Telegram</div>
+                    </div>
+                </button>
+
+                <button class="share-btn" onclick="shareEmail()">
+                    <i class="fas fa-envelope" style="color: #EA4335;"></i>
+                    <div>
+                        <div style="font-weight: 500;">Email</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Share via Email</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toast-message">Link copied to clipboard!</span>
+    </div>
+
+    <script>
+        let fileData = null;
+        let fileUrl = null;
+
+        // Get file identifier from URL
+        const pathParts = window.location.pathname.split('/');
+        const identifier = pathParts[pathParts.length - 1];
+        const isShareLink = pathParts[1] === 'f';  // /f/{share_id} vs /preview/{filename}
+
+        // Load file info
+        async function loadFileInfo() {
+            try {
+                // Use appropriate endpoint based on URL type
+                const endpoint = isShareLink ? `/api/file/${identifier}` : `/api/files/info/${identifier}`;
+                const response = await fetch(endpoint);
+
+                if (!response.ok) {
+                    throw new Error('File not found or access denied');
+                }
+
+                fileData = await response.json();
+                fileUrl = fileData.share_url || (window.location.origin + fileData.download_url);
+
+                displayFileInfo();
+                displayPreview();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('preview-card').style.display = 'block';
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'flex';
+                document.getElementById('error-message').textContent = error.message;
+            }
+        }
+
+        function displayFileInfo() {
+            // File name
+            document.getElementById('file-name').textContent = fileData.original_name;
+
+            // File type
+            const ext = fileData.file_type.toUpperCase();
+            const typeIcon = getFileIcon(fileData.file_type);
+            document.getElementById('file-type').innerHTML = `
+                <i class="${typeIcon}"></i>
+                <span>${ext} File</span>
+            `;
+
+            // File size
+            document.getElementById('file-size').textContent = formatFileSize(fileData.size);
+
+            // Created at
+            document.getElementById('created-at').textContent = formatDate(fileData.created_at);
+
+            // Expires at
+            if (fileData.expires_at) {
+                const expiryDate = new Date(fileData.expires_at);
+                const now = new Date();
+                const hoursUntilExpiry = (expiryDate - now) / (1000 * 60 * 60);
+
+                document.getElementById('expires-at').textContent = formatDate(fileData.expires_at);
+
+                const expiryCard = document.getElementById('expiry-card');
+                if (hoursUntilExpiry < 24) {
+                    expiryCard.classList.add('expiry-danger');
+                } else if (hoursUntilExpiry < 72) {
+                    expiryCard.classList.add('expiry-warning');
+                }
+            } else {
+                document.getElementById('expires-at').textContent = 'Never';
+            }
+
+            // Downloads
+            document.getElementById('downloads').textContent = fileData.downloads;
+
+            // Download button
+            document.getElementById('download-btn').href = fileData.download_url;
+            document.getElementById('download-btn').download = fileData.original_name;
+        }
+
+        function displayPreview() {
+            const previewArea = document.getElementById('preview-area');
+            const ext = fileData.file_type.toLowerCase();
+
+            // Image files
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+            if (imageExts.includes(ext)) {
+                previewArea.innerHTML = `<img src="${fileData.download_url}" alt="${fileData.original_name}">`;
+                return;
+            }
+
+            // Video files
+            const videoExts = ['mp4', 'webm', 'ogg', 'mov'];
+            if (videoExts.includes(ext)) {
+                previewArea.innerHTML = `
+                    <video controls style="max-width: 100%; max-height: 600px;">
+                        <source src="${fileData.download_url}" type="video/${ext}">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+                return;
+            }
+
+            // Audio files
+            const audioExts = ['mp3', 'wav', 'ogg', 'm4a'];
+            if (audioExts.includes(ext)) {
+                previewArea.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                previewArea.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <i class="fas fa-music" style="font-size: 4rem; color: white; margin-bottom: 2rem;"></i>
+                        <audio controls style="width: 100%; max-width: 500px;">
+                            <source src="${fileData.download_url}" type="audio/${ext}">
+                            Your browser does not support the audio tag.
+                        </audio>
+                    </div>
+                `;
+                return;
+            }
+
+            // PDF files
+            if (ext === 'pdf') {
+                previewArea.innerHTML = `
+                    <iframe src="${fileData.download_url}" style="width: 100%; height: 600px; border: none;"></iframe>
+                `;
+                return;
+            }
+
+            // Default - no preview
+            const icon = getFileIcon(ext);
+            previewArea.innerHTML = `
+                <div class="preview-placeholder">
+                    <i class="${icon}"></i>
+                    <h3>No Preview Available</h3>
+                    <p>Click download to view this file</p>
+                </div>
+            `;
+        }
+
+        function shareFile() {
+            document.getElementById('share-link').value = fileUrl;
+            document.getElementById('share-modal').classList.add('show');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.remove('show');
+        }
+
+        function copyShareLink() {
+            const input = document.getElementById('share-link');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            showToast('Link copied to clipboard!');
+        }
+
+        function shareWhatsApp() {
+            const text = `Check out this file: ${fileData.original_name}\n${fileUrl}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        function shareTelegram() {
+            const text = `Check out this file: ${fileData.original_name}`;
+            window.open(`https://t.me/share/url?url=${encodeURIComponent(fileUrl)}&text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        function shareEmail() {
+            const subject = `File: ${fileData.original_name}`;
+            const body = `I'm sharing this file with you:\n\n${fileData.original_name}\n\nDownload: ${fileUrl}`;
+            window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function getFileIcon(ext) {
+            const iconMap = {
+                'pdf': 'fas fa-file-pdf',
+                'doc': 'fas fa-file-word', 'docx': 'fas fa-file-word',
+                'xls': 'fas fa-file-excel', 'xlsx': 'fas fa-file-excel',
+                'ppt': 'fas fa-file-powerpoint', 'pptx': 'fas fa-file-powerpoint',
+                'jpg': 'fas fa-file-image', 'jpeg': 'fas fa-file-image', 'png': 'fas fa-file-image', 'gif': 'fas fa-file-image',
+                'mp4': 'fas fa-file-video', 'avi': 'fas fa-file-video', 'mov': 'fas fa-file-video',
+                'mp3': 'fas fa-file-audio', 'wav': 'fas fa-file-audio',
+                'zip': 'fas fa-file-archive', 'rar': 'fas fa-file-archive',
+                'txt': 'fas fa-file-alt', 'md': 'fas fa-file-alt',
+                'js': 'fas fa-file-code', 'html': 'fas fa-file-code', 'css': 'fas fa-file-code'
+            };
+            return iconMap[ext] || 'fas fa-file';
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            // For future dates (expiry)
+            if (diff < 0) {
+                const futureDays = Math.abs(days);
+                if (futureDays === 0) {
+                    const hours = Math.abs(Math.floor(diff / (1000 * 60 * 60)));
+                    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+                }
+                return `${futureDays} day${futureDays !== 1 ? 's' : ''}`;
+            }
+
+            // For past dates
+            if (days === 0) {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                if (hours === 0) {
+                    const minutes = Math.floor(diff / (1000 * 60));
+                    return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+                }
+                return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+            }
+            if (days === 1) return 'Yesterday';
+            if (days < 7) return `${days} days ago`;
+            if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) !== 1 ? 's' : ''} ago`;
+
+            return date.toLocaleDateString();
+        }
+
+        // Click outside modal to close
+        document.getElementById('share-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeShareModal();
+            }
+        });
+
+        // Load file info on page load
+        loadFileInfo();
+    </script>
+</body>
+</html>
