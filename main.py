@@ -578,16 +578,7 @@ def advanced_page(request: Request):
         logger.error(f"Error reading advanced.html: {str(e)}")
         return HTMLResponse("<h1>403</h1>")
 
-@app.get("/advanced.html", response_class=HTMLResponse)
-def advanced():
-    try:
-        with open("advanced.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="advanced.html not found")
-    except Exception as e:
-        logger.error(f"Error reading advanced.html: {str(e)}")
-        raise HTTPException(status_code=500, detail="Could not load the page")
+
 
 @app.post("/shorten")
 def shorten_url(original_url: str = Form(...), custom_alias: Optional[str] = Form(None), expires_in_minutes: Optional[int] = Form(None)):
@@ -1404,8 +1395,8 @@ async def get_file_stats(filename: str):
 # ===== NEW GOOGLE DRIVE-LIKE ENDPOINTS =====
 
 # Admin credentials
-ADMIN_USERNAME = "nauval"
-ADMIN_PASSWORD = "nauvaldrive"
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin1234"
 
 # Shared files storage
 shared_files = {}  # {share_id: filename}
