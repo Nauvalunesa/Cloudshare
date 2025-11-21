@@ -361,16 +361,20 @@ HTML_STORAGE_DIR = "webpages"
 HTML_META_FILE = "html_pages.json"
 IMAGES_DIR = "images"
 BIOLINK_DATA_FILE = "biolinks.json"
+USERS_FILE = "users.json"
+USER_STORAGE_DIR = "drive"
 
 os.makedirs(STORAGE_DIR, exist_ok=True)
 os.makedirs(HTML_STORAGE_DIR, exist_ok=True)
 os.makedirs(IMAGES_DIR, exist_ok=True)
+os.makedirs(USER_STORAGE_DIR, exist_ok=True)
 
 short_urls = {}
 uploaded_files = {}
 upload_progress = {}
 html_pages = {}
 biolinks = {}
+users = {}  # {username: {password_hash, email, storage_used, storage_quota, created_at}}
 
 # Session management
 def get_or_create_session(request: Request) -> str:
@@ -512,11 +516,85 @@ def load_biolinks():
                     val["created_at"] = datetime.fromisoformat(val["created_at"])
                 biolinks[code] = val
 
+def save_users():
+    """Save users to JSON file"""
+    serializable = {
+        k: {
+            **v,
+            "created_at": v["created_at"].isoformat() if isinstance(v.get("created_at"), datetime) else v.get("created_at")
+        } for k, v in users.items()
+    }
+    with open(USERS_FILE, "w") as f:
+        json.dump(serializable, f, indent=2)
+
+def load_users():
+    """Load users from JSON file"""
+    global users
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r") as f:
+                data = json.load(f)
+                for username, user_data in data.items():
+                    if "created_at" in user_data and isinstance(user_data["created_at"], str):
+                        user_data["created_at"] = datetime.fromisoformat(user_data["created_at"])
+                    users[username] = user_data
+            logger.info(f"Loaded {len(users)} users")
+        except Exception as e:
+            logger.error(f"Error loading users: {e}")
+
+def hash_password(password: str) -> str:
+    """Hash password using SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, password_hash: str) -> bool:
+    """Verify password against hash"""
+    return hash_password(password) == password_hash
+
+def create_user_token(username: str) -> str:
+    """Create user session token"""
+    token_data = f"{username}:{datetime.utcnow().isoformat()}:{secrets.token_hex(16)}"
+    return base64.b64encode(token_data.encode()).decode()
+
+def verify_user_token(request: Request) -> Optional[str]:
+    """Verify user token from cookie and return username"""
+    token = request.cookies.get("user_token")
+    if not token:
+        return None
+    try:
+        decoded = base64.b64decode(token).decode()
+        username = decoded.split(":")[0]
+        if username in users:
+            return username
+        return None
+    except:
+        return None
+
+def get_user_storage_path(username: str) -> str:
+    """Get user's storage directory path"""
+    return os.path.join(USER_STORAGE_DIR, username)
+
+def calculate_user_storage(username: str) -> int:
+    """Calculate total storage used by user in bytes"""
+    user_path = get_user_storage_path(username)
+    if not os.path.exists(user_path):
+        return 0
+
+    total_size = 0
+    for root, dirs, files in os.walk(user_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                total_size += os.path.getsize(file_path)
+            except:
+                pass
+    return total_size
+
 load_short_urls()
 load_uploaded_files()
 load_html_metadata()
 load_banned_ips()
 load_biolinks()
+load_users()
 
 
 def generate_code(length=6):
@@ -1392,6 +1470,178 @@ async def get_file_stats(filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ===== USER AUTHENTICATION ENDPOINTS =====
+
+# Default storage quota per user (1GB in bytes)
+DEFAULT_USER_QUOTA = 1 * 1024 * 1024 * 1024  # 1GB
+
+@app.post("/api/user/register")
+async def register_user(
+    username: str = Form(...),
+    password: str = Form(...),
+    email: str = Form(...),
+    response: Response = None
+):
+    """Register a new user"""
+    try:
+        # Validate username
+        if not username.replace('_', '').replace('-', '').isalnum() or len(username) < 3 or len(username) > 20:
+            raise HTTPException(status_code=400, detail="Username must be 3-20 alphanumeric characters (- and _ allowed)")
+
+        # Check if username already exists
+        if username.lower() in [u.lower() for u in users.keys()]:
+            raise HTTPException(status_code=400, detail="Username already exists")
+
+        # Validate password
+        if len(password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+        # Validate email (basic validation)
+        if '@' not in email or '.' not in email:
+            raise HTTPException(status_code=400, detail="Invalid email address")
+
+        # Create user directory
+        user_path = get_user_storage_path(username)
+        os.makedirs(user_path, exist_ok=True)
+
+        # Create user account
+        users[username] = {
+            "password_hash": hash_password(password),
+            "email": email,
+            "storage_used": 0,
+            "storage_quota": DEFAULT_USER_QUOTA,
+            "created_at": datetime.utcnow()
+        }
+        save_users()
+
+        # Create user token
+        token = create_user_token(username)
+        response.set_cookie(
+            key="user_token",
+            value=token,
+            max_age=30*24*60*60,  # 30 days
+            httponly=True,
+            samesite="lax"
+        )
+
+        logger.info(f"New user registered: {username}")
+
+        return {
+            "success": True,
+            "message": "Registration successful",
+            "username": username,
+            "storage_quota": DEFAULT_USER_QUOTA
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/user/login")
+async def login_user(
+    username: str = Form(...),
+    password: str = Form(...),
+    response: Response = None
+):
+    """Login user"""
+    try:
+        # Check if user exists
+        if username not in users:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+
+        user = users[username]
+
+        # Verify password
+        if not verify_password(password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+
+        # Update storage used
+        users[username]["storage_used"] = calculate_user_storage(username)
+        save_users()
+
+        # Create user token
+        token = create_user_token(username)
+        response.set_cookie(
+            key="user_token",
+            value=token,
+            max_age=30*24*60*60,  # 30 days
+            httponly=True,
+            samesite="lax"
+        )
+
+        logger.info(f"User logged in: {username}")
+
+        return {
+            "success": True,
+            "message": "Login successful",
+            "username": username,
+            "storage_used": users[username]["storage_used"],
+            "storage_quota": users[username]["storage_quota"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/user/logout")
+async def logout_user(response: Response):
+    """Logout user"""
+    response.delete_cookie("user_token")
+    return {"success": True, "message": "Logged out successfully"}
+
+
+@app.get("/api/user/info")
+async def get_user_info(request: Request):
+    """Get current user information"""
+    try:
+        username = verify_user_token(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        # Update storage used
+        users[username]["storage_used"] = calculate_user_storage(username)
+        save_users()
+
+        user = users[username]
+
+        return {
+            "username": username,
+            "email": user["email"],
+            "storage_used": user["storage_used"],
+            "storage_quota": user["storage_quota"],
+            "storage_percentage": (user["storage_used"] / user["storage_quota"] * 100) if user["storage_quota"] > 0 else 0,
+            "created_at": user["created_at"].isoformat() if isinstance(user["created_at"], datetime) else user["created_at"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/check")
+async def check_user_auth(request: Request):
+    """Check if user is authenticated"""
+    username = verify_user_token(request)
+    return {
+        "authenticated": username is not None,
+        "username": username
+    }
+
+
+@app.get("/login")
+async def login_page():
+    """Serve user login/register page"""
+    return FileResponse("login.html")
+
+
 # ===== NEW GOOGLE DRIVE-LIKE ENDPOINTS =====
 
 # Admin credentials
@@ -1465,10 +1715,12 @@ async def drive_dashboard():
 
 @app.post("/api/drive/upload")
 async def drive_upload(request: Request, response: Response, file: UploadFile = File(...)):
-    """Upload file to drive (admin only or creates session)"""
+    """Upload file to drive (requires user authentication)"""
     try:
-        is_admin = verify_admin_token(request)
-        session_id = get_or_create_session(request)
+        # Check user authentication
+        username = verify_user_token(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Authentication required. Please login first.")
 
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file selected")
@@ -1476,11 +1728,22 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         file_content = await file.read()
         file_size = len(file_content)
 
-        if file_size > 100 * 1024 * 1024:  # 100MB for drive
+        if file_size > 100 * 1024 * 1024:  # 100MB per file
             raise HTTPException(status_code=400, detail="Max file size is 100MB")
 
         if file_size == 0:
             raise HTTPException(status_code=400, detail="Empty files not allowed")
+
+        # Check storage quota
+        user = users[username]
+        current_storage = calculate_user_storage(username)
+
+        if current_storage + file_size > user["storage_quota"]:
+            available = user["storage_quota"] - current_storage
+            raise HTTPException(
+                status_code=413,
+                detail=f"Storage quota exceeded. Available: {available / (1024*1024):.2f} MB"
+            )
 
         # Encrypt file
         file_key = get_random_bytes(32)
@@ -1495,7 +1758,11 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         name = generate_code()
         final_name = f"{name}{ext}"
         internal_name = f"{final_name}.enc"
-        path = os.path.join(STORAGE_DIR, internal_name)
+
+        # Store in user's folder
+        user_storage_path = get_user_storage_path(username)
+        os.makedirs(user_storage_path, exist_ok=True)
+        path = os.path.join(user_storage_path, internal_name)
 
         # Save file
         with open(path, "wb") as buffer:
@@ -1516,20 +1783,15 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
             "encryption_key": base64.b64encode(file_key).decode(),
             "hmac": file_hmac,
             "downloads": 0,
-            "owner_session": session_id if not is_admin else "admin",
+            "owner_username": username,
             "is_shared": False,
             "share_id": share_id
         }
         save_uploaded_files()
 
-        # Set session cookie
-        response.set_cookie(
-            key="session_id",
-            value=session_id,
-            max_age=30*24*60*60,
-            httponly=True,
-            samesite="lax"
-        )
+        # Update user storage
+        users[username]["storage_used"] = calculate_user_storage(username)
+        save_users()
 
         return {
             "success": True,
@@ -1538,48 +1800,29 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
             "size": file_size,
             "created_at": datetime.utcnow().isoformat(),
             "share_id": share_id,
-            "share_url": f"https://nauval.cloud/f/{share_id}"
+            "share_url": f"https://nauval.cloud/f/{share_id}",
+            "storage_used": users[username]["storage_used"],
+            "storage_quota": users[username]["storage_quota"]
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Drive upload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/files/list")
 async def list_files(request: Request, response: Response):
-    """List files - admin sees all, public sees only their own files"""
+    """List files - users see only their own files"""
     try:
-        is_admin = verify_admin_token(request)
-        session_id = get_or_create_session(request)
-
-        # Set session cookie for public users
-        if not is_admin:
-            response.set_cookie(
-                key="session_id",
-                value=session_id,
-                max_age=30*24*60*60,
-                httponly=True,
-                samesite="lax"
-            )
+        # Check user authentication
+        username = verify_user_token(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Authentication required. Please login first.")
 
         files_list = []
         for filename, data in uploaded_files.items():
-            # Admin sees all files with full details
-            if is_admin:
-                files_list.append({
-                    "filename": filename,
-                    "original_name": data.get("original_name", filename),
-                    "size": data.get("size", 0),
-                    "encrypted_size": data.get("encrypted_size", 0),
-                    "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
-                    "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
-                    "downloads": data.get("downloads", 0),
-                    "last_accessed": data.get("last_accessed").isoformat() if data.get("last_accessed") else None,
-                    "is_shared": data.get("is_shared", False),
-                    "owner_session": data.get("owner_session", "unknown"),
-                    "is_mine": True  # Admin owns everything
-                })
-            # Public only sees their own files
-            elif data.get("owner_session") == session_id:
+            # Users see only their own files
+            if data.get("owner_username") == username:
                 files_list.append({
                     "filename": filename,
                     "original_name": data.get("original_name", filename),
@@ -1588,17 +1831,26 @@ async def list_files(request: Request, response: Response):
                     "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
                     "downloads": data.get("downloads", 0),
                     "is_shared": data.get("is_shared", False),
+                    "share_id": data.get("share_id", ""),
                     "is_mine": True
                 })
 
         # Sort by creation date (newest first)
         files_list.sort(key=lambda x: x.get("created_at", ""), reverse=True)
 
+        # Get user storage info
+        user = users[username]
+
         return {
             "files": files_list,
             "total": len(files_list),
-            "is_admin": is_admin
+            "username": username,
+            "storage_used": user["storage_used"],
+            "storage_quota": user["storage_quota"],
+            "storage_percentage": (user["storage_used"] / user["storage_quota"] * 100) if user["storage_quota"] > 0 else 0
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error listing files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1606,18 +1858,19 @@ async def list_files(request: Request, response: Response):
 
 @app.post("/api/files/share/{filename}")
 async def share_file(filename: str, request: Request):
-    """Share/unshare a file - users can share their own files, admin can share any"""
+    """Share/unshare a file - users can share their own files"""
     try:
-        is_admin = verify_admin_token(request)
-        session_id = get_or_create_session(request)
+        username = verify_user_token(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Authentication required")
 
         if filename not in uploaded_files:
             raise HTTPException(status_code=404, detail="File not found")
 
         file_data = uploaded_files[filename]
 
-        # Check ownership - must be owner or admin
-        if not is_admin and file_data.get("owner_session") != session_id:
+        # Check ownership
+        if file_data.get("owner_username") != username:
             raise HTTPException(status_code=403, detail="You can only share your own files")
 
         # Toggle share status
@@ -1714,18 +1967,19 @@ async def get_file_info(filename: str, request: Request):
 
 @app.delete("/api/files/delete/{filename}")
 async def delete_file(filename: str, request: Request):
-    """Delete a file - users can delete their own files, admin can delete any"""
+    """Delete a file - users can delete their own files"""
     try:
-        is_admin = verify_admin_token(request)
-        session_id = get_or_create_session(request)
+        username = verify_user_token(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Authentication required")
 
         if filename not in uploaded_files:
             raise HTTPException(status_code=404, detail="File not found")
 
         file_data = uploaded_files[filename]
 
-        # Check ownership - must be owner or admin
-        if not is_admin and file_data.get("owner_session") != session_id:
+        # Check ownership
+        if file_data.get("owner_username") != username:
             raise HTTPException(status_code=403, detail="You can only delete your own files")
 
         file_path = file_data.get("path")
@@ -1738,7 +1992,15 @@ async def delete_file(filename: str, request: Request):
         del uploaded_files[filename]
         save_uploaded_files()
 
-        return {"success": True, "message": f"File {filename} deleted successfully"}
+        # Update user storage
+        users[username]["storage_used"] = calculate_user_storage(username)
+        save_users()
+
+        return {
+            "success": True,
+            "message": f"File {filename} deleted successfully",
+            "storage_used": users[username]["storage_used"]
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -1748,10 +2010,11 @@ async def delete_file(filename: str, request: Request):
 
 @app.post("/api/files/rename/{filename}")
 async def rename_file(filename: str, request: Request):
-    """Rename a file - users can rename their own files, admin can rename any"""
+    """Rename a file - users can rename their own files"""
     try:
-        is_admin = verify_admin_token(request)
-        session_id = get_or_create_session(request)
+        username = verify_user_token(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Authentication required")
 
         # Get new name from JSON body
         body = await request.json()
@@ -1765,8 +2028,8 @@ async def rename_file(filename: str, request: Request):
 
         file_data = uploaded_files[filename]
 
-        # Check ownership - must be owner or admin
-        if not is_admin and file_data.get("owner_session") != session_id:
+        # Check ownership
+        if file_data.get("owner_username") != username:
             raise HTTPException(status_code=403, detail="You can only rename your own files")
 
         if new_name in uploaded_files:
@@ -2351,6 +2614,105 @@ async def sftp_status(request: Request):
         }
     else:
         return {"connected": False}
+
+
+@app.post("/api/sftp/rename")
+async def sftp_rename_item(request: Request, old_path: str = Form(...), new_path: str = Form(...)):
+    """Rename/move file or directory on SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Rename/move
+        sftp.rename(old_path, new_path)
+
+        return {"success": True, "message": f"Renamed to {new_path}"}
+
+    except Exception as e:
+        logger.error(f"SFTP rename error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/copy")
+async def sftp_copy_item(request: Request, source_path: str = Form(...), dest_path: str = Form(...)):
+    """Copy file on SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Read source file
+        with sftp.open(source_path, 'rb') as source_file:
+            content = source_file.read()
+
+        # Write to destination
+        with sftp.open(dest_path, 'wb') as dest_file:
+            dest_file.write(content)
+
+        # Copy permissions
+        try:
+            source_stat = sftp.stat(source_path)
+            sftp.chmod(dest_path, source_stat.st_mode)
+        except:
+            pass  # Ignore if chmod fails
+
+        return {"success": True, "message": f"Copied to {dest_path}"}
+
+    except Exception as e:
+        logger.error(f"SFTP copy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/chmod")
+async def sftp_change_permissions(request: Request, path: str = Form(...), mode: str = Form(...)):
+    """Change file/directory permissions on SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Convert mode string (e.g., "755") to octal
+        mode_int = int(mode, 8)
+
+        sftp.chmod(path, mode_int)
+
+        return {"success": True, "message": f"Changed permissions to {mode}"}
+
+    except Exception as e:
+        logger.error(f"SFTP chmod error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sftp/create")
+async def sftp_create_file(request: Request, path: str = Form(...), content: str = Form("")):
+    """Create new file on SFTP server"""
+    try:
+        session_id = get_or_create_session(request)
+
+        if session_id not in sftp_connections:
+            raise HTTPException(status_code=400, detail="Not connected to SFTP server")
+
+        sftp = sftp_connections[session_id]['sftp']
+
+        # Create file with content
+        with sftp.open(path, 'w') as remote_file:
+            remote_file.write(content)
+
+        return {"success": True, "message": f"File created: {os.path.basename(path)}"}
+
+    except Exception as e:
+        logger.error(f"SFTP create file error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/sftpmanager")

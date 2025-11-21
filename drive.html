@@ -727,9 +727,9 @@
             </div>
         </div>
         <div class="header-actions">
-            <!-- Admin Badge -->
-            <div id="admin-badge" style="display: none; padding: 0.5rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; font-size: 0.85rem; font-weight: 500; margin-right: 0.5rem;">
-                <i class="fas fa-shield-alt"></i> Admin Mode
+            <!-- User Info -->
+            <div id="user-info" style="display: none; padding: 0.5rem 1rem; background: var(--hover-bg); border-radius: 20px; font-size: 0.85rem; font-weight: 500; margin-right: 0.5rem;">
+                <i class="fas fa-user-circle"></i> <span id="username-display"></span>
             </div>
 
             <button class="icon-btn" title="Grid view" id="grid-view-btn">
@@ -739,10 +739,7 @@
                 <i class="fas fa-list"></i>
             </button>
 
-            <!-- Login/Logout Button -->
-            <button class="icon-btn" id="auth-btn" title="Admin Login" onclick="showLoginModal()" style="display: none;">
-                <i class="fas fa-sign-in-alt"></i>
-            </button>
+            <!-- Logout Button -->
             <button class="icon-btn" id="logout-btn" title="Logout" onclick="logout()" style="display: none;">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
@@ -780,11 +777,6 @@
                     <span>Trash</span>
                 </a>
 
-                <!-- Admin Only: File Manager -->
-                <a href="/filemanager" class="nav-item" id="filemanager-link" style="display: none; margin-top: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                    <i class="fas fa-folder-tree"></i>
-                    <span>File Manager</span>
-                </a>
 
                 <!-- SFTP Manager -->
                 <a href="/sftpmanager" class="nav-item" style="margin-top: 0.5rem; background: linear-gradient(135deg, #00acc1 0%, #00838f 100%); color: white;">
@@ -798,7 +790,7 @@
                 <div class="storage-bar">
                     <div class="storage-fill" id="storage-fill" style="width: 0%"></div>
                 </div>
-                <div id="storage-text">0 B of 5 GB used</div>
+                <div id="storage-text">0 B of 1 GB used</div>
             </div>
         </aside>
 
@@ -882,40 +874,6 @@
         </button>
     </div>
 
-    <!-- Admin Login Modal -->
-    <div class="modal" id="login-modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2 class="modal-title">Admin Login</h2>
-                <button class="close-btn" onclick="closeLoginModal()">&times;</button>
-            </div>
-
-            <form id="login-form" onsubmit="adminLogin(event)">
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Username</label>
-                    <input type="text" id="login-username" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
-                </div>
-
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
-                    <input type="password" id="login-password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
-                </div>
-
-                <div id="login-error" style="display: none; padding: 0.8rem; background: #fee; color: #c00; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;">
-                    Invalid credentials
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;" id="login-submit-btn">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Login as Admin
-                </button>
-            </form>
-
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary); font-size: 0.85rem;">
-                <i class="fas fa-info-circle"></i> Public users can upload and manage their own files without logging in
-            </div>
-        </div>
-    </div>
 
     <!-- Upload Modal -->
     <div class="modal" id="upload-modal">
@@ -997,113 +955,63 @@
         let uploadQueue = [];
         let currentView = 'grid';
         let contextMenuFile = null;
-        let isAdmin = false;
+        let currentUser = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
-            await checkAdminStatus();
+            await checkUserAuth();
             loadFiles();
             setupEventListeners();
-            updateStorageInfo();
         });
 
-        // ===== ADMIN AUTHENTICATION =====
-        async function checkAdminStatus() {
+        // ===== USER AUTHENTICATION =====
+        async function checkUserAuth() {
             try {
-                const response = await fetch('/api/admin/check');
+                const response = await fetch('/api/user/check');
                 const data = await response.json();
-                isAdmin = data.is_admin;
-                updateAuthUI();
+
+                if (!data.authenticated) {
+                    // Not authenticated, redirect to login
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Get user info
+                const infoResponse = await fetch('/api/user/info');
+                if (infoResponse.ok) {
+                    currentUser = await infoResponse.json();
+                    updateAuthUI();
+                    updateStorageInfo();
+                } else {
+                    window.location.href = '/login';
+                }
             } catch (error) {
-                console.error('Error checking admin status:', error);
-                isAdmin = false;
-                updateAuthUI();
+                console.error('Error checking authentication:', error);
+                window.location.href = '/login';
             }
         }
 
         function updateAuthUI() {
-            const adminBadge = document.getElementById('admin-badge');
-            const authBtn = document.getElementById('auth-btn');
-            const logoutBtn = document.getElementById('logout-btn');
-            const fileManagerLink = document.getElementById('filemanager-link');
+            if (currentUser) {
+                const userInfo = document.getElementById('user-info');
+                const usernameDisplay = document.getElementById('username-display');
+                const logoutBtn = document.getElementById('logout-btn');
 
-            if (isAdmin) {
-                // Show admin UI
-                adminBadge.style.display = 'block';
-                authBtn.style.display = 'none';
+                usernameDisplay.textContent = currentUser.username;
+                userInfo.style.display = 'flex';
                 logoutBtn.style.display = 'flex';
-                fileManagerLink.style.display = 'flex';
-            } else {
-                // Show public UI
-                adminBadge.style.display = 'none';
-                authBtn.style.display = 'flex';
-                logoutBtn.style.display = 'none';
-                fileManagerLink.style.display = 'none';
-            }
-        }
-
-        function showLoginModal() {
-            document.getElementById('login-modal').classList.add('show');
-            document.getElementById('login-error').style.display = 'none';
-        }
-
-        function closeLoginModal() {
-            document.getElementById('login-modal').classList.remove('show');
-            document.getElementById('login-form').reset();
-        }
-
-        async function adminLogin(event) {
-            event.preventDefault();
-
-            const username = document.getElementById('login-username').value;
-            const password = document.getElementById('login-password').value;
-            const submitBtn = document.getElementById('login-submit-btn');
-            const errorDiv = document.getElementById('login-error');
-
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-            errorDiv.style.display = 'none';
-
-            try {
-                const formData = new FormData();
-                formData.append('username', username);
-                formData.append('password', password);
-
-                const response = await fetch('/api/admin/login', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    isAdmin = true;
-                    updateAuthUI();
-                    closeLoginModal();
-                    await loadFiles();  // Reload files with admin access
-                    alert('✅ Logged in as Admin!');
-                } else {
-                    errorDiv.textContent = 'Invalid username or password';
-                    errorDiv.style.display = 'block';
-                }
-            } catch (error) {
-                errorDiv.textContent = 'Network error. Please try again.';
-                errorDiv.style.display = 'block';
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login as Admin';
             }
         }
 
         async function logout() {
-            if (!confirm('Logout from admin mode?')) return;
+            if (!confirm('Logout?')) return;
 
             try {
-                await fetch('/api/admin/logout', { method: 'POST' });
-                isAdmin = false;
-                updateAuthUI();
-                await loadFiles();  // Reload files with public access
-                alert('✅ Logged out successfully');
+                await fetch('/api/user/logout', { method: 'POST' });
+                window.location.href = '/login';
             } catch (error) {
                 console.error('Logout error:', error);
+                window.location.href = '/login';
             }
         }
 
@@ -1331,9 +1239,25 @@
         async function loadFiles() {
             try {
                 const response = await fetch('/api/files/list');
+
+                if (response.status === 401) {
+                    // Not authenticated, redirect to login
+                    window.location.href = '/login';
+                    return;
+                }
+
                 const data = await response.json();
 
                 allFiles = data.files || [];
+
+                // Update storage info from response
+                if (data.storage_used !== undefined && data.storage_quota !== undefined) {
+                    const percent = (data.storage_used / data.storage_quota) * 100;
+                    document.getElementById('storage-fill').style.width = Math.min(percent, 100) + '%';
+                    document.getElementById('storage-text').textContent =
+                        `${formatFileSize(data.storage_used)} of ${formatFileSize(data.storage_quota)} used`;
+                }
+
                 renderFiles();
             } catch (error) {
                 console.error('Error loading files:', error);
@@ -1649,15 +1573,19 @@
 
         async function updateStorageInfo() {
             try {
-                const response = await fetch('/api/files/stats');
-                const data = await response.json();
+                const response = await fetch('/api/user/info');
 
-                const totalSize = data.total_size || 0;
-                const maxSize = 5 * 1024 * 1024 * 1024; // 5 GB
-                const percent = (totalSize / maxSize) * 100;
+                if (response.ok) {
+                    const data = await response.json();
 
-                document.getElementById('storage-fill').style.width = Math.min(percent, 100) + '%';
-                document.getElementById('storage-text').textContent = `${formatFileSize(totalSize)} of 5 GB used`;
+                    const storageUsed = data.storage_used || 0;
+                    const storageQuota = data.storage_quota || (1024 * 1024 * 1024);  // 1 GB default
+                    const percent = (storageUsed / storageQuota) * 100;
+
+                    document.getElementById('storage-fill').style.width = Math.min(percent, 100) + '%';
+                    document.getElementById('storage-text').textContent =
+                        `${formatFileSize(storageUsed)} of ${formatFileSize(storageQuota)} used`;
+                }
             } catch (error) {
                 console.error('Error updating storage:', error);
             }
