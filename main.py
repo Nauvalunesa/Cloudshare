@@ -277,8 +277,7 @@ def index():
 def shorten_url(
     original_url: str = Form(...),
     custom_alias: Optional[str] = Form(None),
-    expires_in_minutes: Optional[int] = Form(None),
-    password: Optional[str] = Form(None)
+    expires_in_minutes: Optional[int] = Form(None)
 ):
     try:
         if not original_url.startswith(('http://', 'https://')):
@@ -294,8 +293,7 @@ def shorten_url(
         short_urls[code] = {
             "url": original_url,
             "expires_at": expiry,
-            "created_at": datetime.utcnow(),
-            "password": password.strip() if password else None
+            "created_at": datetime.utcnow()
         }
         save_short_urls()
 
@@ -305,8 +303,7 @@ def shorten_url(
             "expires_at": expiry.isoformat() if expiry else None,
             "code": code,
             "qr_code_url": f"https://nauval.cloud/qr/{code}",
-            "qr_code_base64": generate_qr_base64(short_url),
-            "password_protected": bool(password)
+            "qr_code_base64": generate_qr_base64(short_url)
         }
     except Exception as e:
         logger.error(f"Error shortening URL: {str(e)}\n{traceback.format_exc()}")
@@ -323,23 +320,6 @@ def redirect_short_url(code: str, request: Request):
             save_short_urls()
             raise HTTPException(status_code=410, detail="Short URL expired")
 
-        # Check password protection
-        if data.get("password"):
-            # Return password prompt page instead of direct redirect
-            return HTMLResponse(f"""
-            <!DOCTYPE html>
-            <html><head><meta charset="utf-8"><title>Password Required</title>
-            <style>body{{font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5}}
-            .box{{background:white;padding:40px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center}}
-            input{{padding:10px;margin:10px 0;width:250px;border:1px solid #ddd;border-radius:5px}}
-            button{{padding:10px 30px;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer}}
-            button:hover{{background:#0056b3}}</style></head>
-            <body><div class="box"><h2>🔒 Password Required</h2><p>This link is password protected</p>
-            <form method="post" action="/s/{code}/unlock">
-            <input type="password" name="password" placeholder="Enter password" required>
-            <br><button type="submit">Unlock</button></form></div></body></html>
-            """)
-
         # Track click
         track_click(f"url_{code}", request)
 
@@ -349,34 +329,6 @@ def redirect_short_url(code: str, request: Request):
     except Exception as e:
         logger.error(f"Redirect error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@app.post("/s/{code}/unlock")
-def unlock_short_url(code: str, password: str = Form(...), request: Request = None):
-    try:
-        data = short_urls.get(code)
-        if not data:
-            raise HTTPException(status_code=404, detail="Short URL not found")
-
-        if data.get("password") != password:
-            return HTMLResponse("""
-            <!DOCTYPE html>
-            <html><head><meta charset="utf-8"><title>Wrong Password</title>
-            <style>body{font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5}
-            .box{background:white;padding:40px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center}
-            .error{color:red;margin-bottom:15px}</style></head>
-            <body><div class="box"><div class="error">❌ Wrong Password</div>
-            <a href="javascript:history.back()">← Go Back</a></div></body></html>
-            """, status_code=401)
-
-        # Track click
-        track_click(f"url_{code}", request)
-
-        return RedirectResponse(data["url"])
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Unlock error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/qr/{code}")
 def generate_qr(code: str, fg: Optional[str] = None, bg: Optional[str] = None):
@@ -404,8 +356,7 @@ async def upload_file(
     filename: Optional[str] = Form(None),
     expire_value: Optional[int] = Form(None),
     expire_unit: Optional[str] = Form(None),
-    upload_id: Optional[str] = Form(None),
-    password: Optional[str] = Form(None)
+    upload_id: Optional[str] = Form(None)
 ):
     try:
         if not file.filename:
@@ -463,8 +414,7 @@ async def upload_file(
             "expires_at": expires_at,
             "original_name": file.filename,
             "size": file_size,
-            "created_at": datetime.utcnow(),
-            "password": password.strip() if password else None
+            "created_at": datetime.utcnow()
         }
         save_uploaded_files()
 
@@ -479,8 +429,7 @@ async def upload_file(
             "size": file_size,
             "qr_code_url": f"https://nauval.cloud/qr/{final_name}",
             "qr_code_base64": generate_qr_base64(url),
-            "upload_id": upload_id,
-            "password_protected": bool(password)
+            "upload_id": upload_id
         }
     except Exception as e:
         upload_progress[upload_id]["status"] = "error"
@@ -507,22 +456,6 @@ def download_file(filename: str, request: Request):
             save_uploaded_files()
             raise HTTPException(status_code=410, detail="File expired")
 
-        # Check password protection
-        if data.get("password"):
-            return HTMLResponse(f"""
-            <!DOCTYPE html>
-            <html><head><meta charset="utf-8"><title>Password Required</title>
-            <style>body{{font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5}}
-            .box{{background:white;padding:40px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center}}
-            input{{padding:10px;margin:10px 0;width:250px;border:1px solid #ddd;border-radius:5px}}
-            button{{padding:10px 30px;background:#28a745;color:white;border:none;border-radius:5px;cursor:pointer}}
-            button:hover{{background:#218838}}</style></head>
-            <body><div class="box"><h2>🔒 Password Required</h2><p>File: {data.get('original_name', filename)}</p>
-            <form method="post" action="/download/{filename}/unlock">
-            <input type="password" name="password" placeholder="Enter password" required>
-            <br><button type="submit">Download</button></form></div></body></html>
-            """)
-
         # Track download
         track_click(f"file_{filename}", request)
 
@@ -532,34 +465,6 @@ def download_file(filename: str, request: Request):
     except Exception as e:
         logger.error(f"Download error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@app.post("/download/{filename}/unlock")
-def unlock_file(filename: str, password: str = Form(...), request: Request = None):
-    try:
-        data = uploaded_files.get(filename)
-        if not data:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        if data.get("password") != password:
-            return HTMLResponse("""
-            <!DOCTYPE html>
-            <html><head><meta charset="utf-8"><title>Wrong Password</title>
-            <style>body{font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5}
-            .box{background:white;padding:40px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center}
-            .error{color:red;margin-bottom:15px}</style></head>
-            <body><div class="box"><div class="error">❌ Wrong Password</div>
-            <a href="javascript:history.back()">← Go Back</a></div></body></html>
-            """, status_code=401)
-
-        # Track download
-        track_click(f"file_{filename}", request)
-
-        return FileResponse(data["path"], filename=data.get("original_name", filename), media_type='application/octet-stream')
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Unlock file error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload/html")
 async def upload_html_page(
@@ -639,8 +544,7 @@ def batch_shorten_urls(urls: list = Form(...)):
                 short_urls[code] = {
                     "url": url,
                     "expires_at": None,
-                    "created_at": datetime.utcnow(),
-                    "password": None
+                    "created_at": datetime.utcnow()
                 }
 
                 short_url = f"https://nauval.cloud/s/{code}"
@@ -700,7 +604,6 @@ def list_urls(limit: int = 50, offset: int = 0):
                 "url": data["url"],
                 "created_at": data["created_at"].isoformat(),
                 "expires_at": data["expires_at"].isoformat() if data["expires_at"] else None,
-                "password_protected": bool(data.get("password")),
                 "clicks": clicks,
                 "short_url": f"https://nauval.cloud/s/{code}"
             })
@@ -730,7 +633,6 @@ def list_files(limit: int = 50, offset: int = 0):
                 "size": data.get("size", 0),
                 "created_at": data["created_at"].isoformat(),
                 "expires_at": data["expires_at"].isoformat() if data["expires_at"] else None,
-                "password_protected": bool(data.get("password")),
                 "downloads": downloads,
                 "file_url": f"https://nauval.cloud/download/{filename}"
             })
@@ -810,18 +712,6 @@ def preview_file(filename: str, request: Request):
 
         if data["expires_at"] and datetime.utcnow() > data["expires_at"]:
             raise HTTPException(status_code=410, detail="File expired")
-
-        # Check password
-        if data.get("password"):
-            return HTMLResponse(f"""
-            <!DOCTYPE html>
-            <html><head><meta charset="utf-8"><title>Password Required</title>
-            <style>body{{font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5}}
-            .box{{background:white;padding:40px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center}}</style></head>
-            <body><div class="box"><h2>🔒 Password Required</h2>
-            <p>This file is password protected</p>
-            <a href="/download/{filename}">Go to download page</a></div></body></html>
-            """)
 
         # Check file type
         ext = os.path.splitext(filename)[1].lower()
