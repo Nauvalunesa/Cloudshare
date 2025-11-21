@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SFTP Manager - CloudShare</title>
+    <title>Advanced SFTP Manager - CloudShare</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.5/ace.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.5/ext-language_tools.js"></script>
     <style>
         * {
             margin: 0;
@@ -15,18 +13,20 @@
         }
 
         :root {
-            --primary-color: #00acc1;
+            --primary: #00acc1;
             --primary-dark: #00838f;
             --bg-dark: #1e1e1e;
             --bg-darker: #141414;
             --bg-panel: #252525;
-            --border-color: #3a3a3a;
+            --border: #3a3a3a;
             --text-primary: #e0e0e0;
             --text-secondary: #a0a0a0;
-            --hover-bg: #333;
+            --hover: #333;
             --success: #4caf50;
             --danger: #f44336;
             --warning: #ff9800;
+            --local-accent: #9c27b0;
+            --remote-accent: #00acc1;
         }
 
         body {
@@ -34,12 +34,14 @@
             background: var(--bg-dark);
             color: var(--text-primary);
             overflow: hidden;
+            height: 100vh;
         }
 
+        /* Header */
         .header {
             background: var(--bg-darker);
-            padding: 0.8rem 1.5rem;
-            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.5rem;
+            border-bottom: 2px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -49,9 +51,41 @@
             display: flex;
             align-items: center;
             gap: 0.8rem;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 600;
-            color: var(--primary-color);
+        }
+
+        .logo i {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--local-accent), var(--remote-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-indicator.disconnected {
+            background: rgba(244, 67, 54, 0.2);
+            color: var(--danger);
+        }
+
+        .status-indicator.connected {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--success);
         }
 
         .btn {
@@ -68,57 +102,128 @@
         }
 
         .btn-primary {
-            background: var(--primary-color);
+            background: var(--primary);
             color: white;
         }
 
-        .btn-secondary {
-            background: var(--bg-panel);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
+        .btn-primary:hover {
+            background: var(--primary-dark);
         }
 
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        /* Main Container */
         .container {
             display: flex;
-            height: calc(100vh - 60px);
+            height: calc(100vh - 72px);
         }
 
+        /* Panel */
         .panel {
             flex: 1;
             display: flex;
             flex-direction: column;
             background: var(--bg-panel);
-            border-right: 1px solid var(--border-color);
+            border-right: 1px solid var(--border);
+            position: relative;
+        }
+
+        .panel:last-child {
+            border-right: none;
         }
 
         .panel-header {
             padding: 1rem 1.5rem;
             background: var(--bg-darker);
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 2px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
+        .panel-header.local {
+            border-bottom-color: var(--local-accent);
+        }
+
+        .panel-header.remote {
+            border-bottom-color: var(--remote-accent);
+        }
+
         .panel-title {
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             display: flex;
             align-items: center;
+            gap: 0.8rem;
+        }
+
+        .panel-title.local {
+            color: var(--local-accent);
+        }
+
+        .panel-title.remote {
+            color: var(--remote-accent);
+        }
+
+        .panel-actions {
+            display: flex;
             gap: 0.5rem;
         }
 
-        .breadcrumb {
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--hover);
+            color: var(--text-primary);
+            border-color: var(--primary);
+        }
+
+        /* Path Bar */
+        .path-bar {
             padding: 0.8rem 1.5rem;
             background: var(--bg-dark);
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.9rem;
-            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            font-size: 0.9rem;
         }
 
+        .path-bar input {
+            flex: 1;
+            padding: 0.5rem 0.8rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .path-bar input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* File List */
         .file-list {
             flex: 1;
             overflow-y: auto;
@@ -126,32 +231,45 @@
         }
 
         .file-item {
+            padding: 0.8rem 1rem;
             display: flex;
             align-items: center;
-            padding: 0.8rem 1rem;
-            margin-bottom: 2px;
+            gap: 1rem;
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
-            gap: 1rem;
+            user-select: none;
+            border: 2px solid transparent;
         }
 
         .file-item:hover {
-            background: var(--hover-bg);
+            background: var(--hover);
+        }
+
+        .file-item.selected {
+            background: rgba(0, 172, 193, 0.2);
+            border-color: var(--primary);
+        }
+
+        .file-item.dragging {
+            opacity: 0.5;
         }
 
         .file-icon {
             width: 40px;
-            text-align: center;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 1.5rem;
         }
 
         .file-icon.folder {
-            color: #ffc107;
+            color: #ffa726;
         }
 
         .file-icon.file {
-            color: #64b5f6;
+            color: var(--text-secondary);
         }
 
         .file-info {
@@ -161,49 +279,125 @@
 
         .file-name {
             font-weight: 500;
-            margin-bottom: 0.2rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .file-meta {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
+            margin-top: 0.2rem;
+            display: flex;
+            gap: 1rem;
         }
 
-        .icon-btn {
+        .file-actions {
+            display: flex;
+            gap: 0.3rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .file-item:hover .file-actions {
+            opacity: 1;
+        }
+
+        .file-actions button {
             width: 32px;
             height: 32px;
-            border-radius: 50%;
             border: none;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-primary);
+            background: var(--bg-darker);
+            color: var(--text-secondary);
+            border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
         }
 
-        .toolbar {
-            padding: 0.8rem 1.5rem;
-            background: var(--bg-darker);
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            gap: 0.5rem;
+        .file-actions button:hover {
+            background: var(--primary);
+            color: white;
         }
 
-        .modal {
+        /* Drag & Drop Overlay */
+        .drop-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 172, 193, 0.1);
+            border: 3px dashed var(--primary);
             display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            z-index: 100;
+        }
+
+        .drop-overlay.active {
+            display: flex;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            padding: 0.5rem;
+            display: none;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .context-menu.show {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 0.7rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            transition: all 0.2s;
+            color: var(--text-primary);
+        }
+
+        .context-menu-item:hover {
+            background: var(--hover);
+        }
+
+        .context-menu-item.danger {
+            color: var(--danger);
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0.5rem 0;
+        }
+
+        /* Modal */
+        .modal {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
             align-items: center;
             justify-content: center;
+            z-index: 2000;
         }
 
         .modal.show {
@@ -212,33 +406,63 @@
 
         .modal-content {
             background: var(--bg-panel);
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 2rem;
+            min-width: 400px;
             max-width: 500px;
-            width: 90%;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
         }
 
         .form-group {
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
-            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
         .form-group input {
             width: 100%;
             padding: 0.8rem;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
             background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 6px;
             color: var(--text-primary);
             font-size: 1rem;
         }
 
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+
+        .btn-secondary {
+            background: var(--bg-darker);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--hover);
+        }
+
+        /* Empty State */
         .empty-state {
             display: flex;
             flex-direction: column;
@@ -246,152 +470,156 @@
             justify-content: center;
             height: 100%;
             color: var(--text-secondary);
+            padding: 2rem;
+            text-align: center;
         }
 
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            background: var(--bg-darker);
-            color: var(--text-primary);
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            display: none;
-            z-index: 2000;
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
         }
 
-        .toast.show {
-            display: block;
+        .empty-state h3 {
+            margin-bottom: 0.5rem;
         }
 
-        .connection-status {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
         }
 
-        .connection-status.connected {
-            background: rgba(76, 175, 80, 0.2);
-            color: var(--success);
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        .connection-status.disconnected {
-            background: rgba(244, 67, 54, 0.2);
-            color: var(--danger);
-        }
-
+        /* Scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 10px;
+            height: 10px;
         }
 
         ::-webkit-scrollbar-track {
-            background: var(--bg-dark);
+            background: var(--bg-darker);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 4px;
+            background: var(--border);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--hover);
         }
     </style>
 </head>
 <body>
+    <!-- Header -->
     <div class="header">
         <div class="logo">
             <i class="fas fa-exchange-alt"></i>
-            <span>SFTP Manager</span>
+            <span>Advanced SFTP Manager</span>
         </div>
-        <div style="display: flex; gap: 1rem; align-items: center;">
-            <div class="connection-status disconnected" id="status-badge">
-                <i class="fas fa-circle" style="font-size: 0.6rem;"></i>
+        <div class="connection-status">
+            <div class="status-indicator disconnected" id="connection-status">
+                <i class="fas fa-circle"></i>
                 <span>Disconnected</span>
             </div>
-            <button class="btn btn-secondary" onclick="window.location.href='/drive'">
-                <i class="fas fa-arrow-left"></i>
-                Back to Drive
+            <button class="btn btn-primary" onclick="showConnectModal()" id="connect-btn">
+                <i class="fas fa-plug"></i>
+                Connect to SFTP
+            </button>
+            <button class="btn btn-danger" onclick="disconnect()" id="disconnect-btn" style="display: none;">
+                <i class="fas fa-times"></i>
+                Disconnect
             </button>
         </div>
     </div>
 
+    <!-- Main Container -->
     <div class="container">
-        <!-- Left Panel: Local Device -->
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">
+        <!-- Local Panel -->
+        <div class="panel" id="local-panel">
+            <div class="panel-header local">
+                <div class="panel-title local">
                     <i class="fas fa-laptop"></i>
-                    Local Device
+                    <span>Local Device</span>
                 </div>
-                <button class="btn btn-primary" onclick="selectLocalFolder()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                    <i class="fas fa-folder-open"></i>
-                    Open Folder
-                </button>
+                <div class="panel-actions">
+                    <button class="icon-btn" onclick="selectLocalFiles()" title="Select Files">
+                        <i class="fas fa-file-import"></i>
+                    </button>
+                    <button class="icon-btn" onclick="selectLocalFolder()" title="Select Folder">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                    <button class="icon-btn" onclick="refreshLocal()" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
             </div>
-
-            <div class="breadcrumb" id="local-breadcrumb">
-                Click "Open Folder" to browse your device
+            <div class="path-bar">
+                <i class="fas fa-folder"></i>
+                <span id="local-path">Select files or folder to begin</span>
             </div>
-
             <div class="file-list" id="local-list">
                 <div class="empty-state">
-                    <i class="fas fa-laptop" style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;"></i>
-                    <p>No folder selected</p>
-                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">Click "Open Folder" to browse files</p>
+                    <i class="fas fa-folder-open"></i>
+                    <h3>No Files Selected</h3>
+                    <p>Click "Select Files" or "Select Folder" to browse your local device</p>
                 </div>
             </div>
-
-            <div class="toolbar">
-                <button class="btn btn-secondary" onclick="refreshLocal()" id="refresh-local-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: none;">
-                    <i class="fas fa-sync-alt"></i>
-                    Refresh
-                </button>
+            <div class="drop-overlay" id="local-drop">
+                <div>
+                    <i class="fas fa-download"></i>
+                    <div>Drop files here to download from SFTP</div>
+                </div>
             </div>
         </div>
 
-        <!-- Right Panel: SFTP Server -->
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">
+        <!-- Remote Panel -->
+        <div class="panel" id="remote-panel">
+            <div class="panel-header remote">
+                <div class="panel-title remote">
                     <i class="fas fa-server"></i>
-                    SFTP Server
+                    <span>Remote SFTP Server</span>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-primary" onclick="showConnectModal()" id="connect-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                        <i class="fas fa-plug"></i>
-                        Connect
+                <div class="panel-actions">
+                    <button class="icon-btn" onclick="createRemoteFile()" title="New File" disabled id="new-file-btn">
+                        <i class="fas fa-file-plus"></i>
                     </button>
-                    <button class="btn btn-secondary" onclick="createFolderSFTP()" id="mkdir-sftp-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; display: none;">
+                    <button class="icon-btn" onclick="createRemoteFolder()" title="New Folder" disabled id="new-folder-btn">
                         <i class="fas fa-folder-plus"></i>
                     </button>
-                    <button class="btn btn-secondary" onclick="disconnectSFTP()" id="disconnect-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; display: none;">
-                        <i class="fas fa-times"></i>
-                        Disconnect
+                    <button class="icon-btn" onclick="refreshRemote()" title="Refresh" disabled id="refresh-btn">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
-
-            <div class="breadcrumb" style="display: flex; align-items: center; gap: 0.5rem;">
-                <button class="icon-btn" onclick="goUpFolder()" id="up-btn" title="Go up" style="display: none;">
-                    <i class="fas fa-arrow-up"></i>
+            <div class="path-bar">
+                <i class="fas fa-folder"></i>
+                <input type="text" id="remote-path" placeholder="/" disabled>
+                <button class="icon-btn" onclick="goToPath()" title="Go" disabled id="go-btn">
+                    <i class="fas fa-arrow-right"></i>
                 </button>
-                <span id="sftp-breadcrumb">Not connected</span>
             </div>
-
-            <div class="file-list" id="sftp-list">
+            <div class="file-list" id="remote-list">
                 <div class="empty-state">
-                    <i class="fas fa-server" style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;"></i>
-                    <p>Not connected to SFTP server</p>
-                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">Click "Connect" to start</p>
+                    <i class="fas fa-plug"></i>
+                    <h3>Not Connected</h3>
+                    <p>Connect to an SFTP server to browse remote files</p>
                 </div>
             </div>
-
-            <div class="toolbar">
-                <button class="btn btn-secondary" onclick="refreshSFTP()" id="refresh-sftp-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: none;">
-                    <i class="fas fa-sync-alt"></i>
-                    Refresh
-                </button>
+            <div class="drop-overlay" id="remote-drop">
+                <div>
+                    <i class="fas fa-upload"></i>
+                    <div>Drop files here to upload to SFTP</div>
+                </div>
             </div>
         </div>
     </div>
@@ -399,8 +627,8 @@
     <!-- Connect Modal -->
     <div class="modal" id="connect-modal">
         <div class="modal-content">
-            <h2 style="margin-bottom: 1.5rem;">Connect to SFTP Server</h2>
-            <form onsubmit="connectSFTP(event)">
+            <h2 class="modal-title">Connect to SFTP Server</h2>
+            <form id="connect-form" onsubmit="connectToSFTP(event)">
                 <div class="form-group">
                     <label>Host</label>
                     <input type="text" id="sftp-host" required placeholder="example.com">
@@ -417,174 +645,237 @@
                     <label>Password</label>
                     <input type="password" id="sftp-password" required>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeConnectModal()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
                         <i class="fas fa-plug"></i>
                         Connect
                     </button>
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('connect-modal')">
-                        Cancel
-                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Create Folder Modal -->
-    <div class="modal" id="mkdir-modal">
-        <div class="modal-content">
-            <h2 style="margin-bottom: 1.5rem;">Create New Folder</h2>
-            <form onsubmit="submitCreateFolderSFTP(event)">
-                <div class="form-group">
-                    <label>Folder Name</label>
-                    <input type="text" id="folder-name" required>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">
-                        Create
-                    </button>
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('mkdir-modal')">
-                        Cancel
-                    </button>
-                </div>
-            </form>
-        </div>
+    <!-- Context Menu -->
+    <div class="context-menu" id="context-menu">
+        <!-- Will be populated dynamically -->
     </div>
 
-    <!-- File Editor Modal -->
-    <div class="modal" id="editor-modal">
-        <div class="modal-content" style="max-width: 90%; max-height: 90vh; width: 1200px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 id="editor-filename" style="margin: 0;">Edit File</h2>
-                <button class="btn btn-secondary" onclick="closeModal('editor-modal')" style="padding: 0.5rem 1rem;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <div id="file-content" style="width: 100%; height: 500px; border: 1px solid var(--border-color); border-radius: 8px;"></div>
-            </div>
-            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button class="btn btn-secondary" onclick="closeModal('editor-modal')">
-                    <i class="fas fa-times"></i>
-                    Cancel
-                </button>
-                <button class="btn btn-primary" onclick="saveFile()">
-                    <i class="fas fa-save"></i>
-                    Save File
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div class="toast" id="toast">
-        <span id="toast-message">Success!</span>
-    </div>
+    <!-- Hidden file inputs -->
+    <input type="file" id="file-input" multiple hidden>
+    <input type="file" id="folder-input" webkitdirectory directory hidden>
 
     <script>
-        let localFolderHandle = null;
+        // Global state
         let localFiles = [];
-        let sftpPath = '/';
-        let sftpFiles = [];
+        let remoteFiles = [];
+        let currentRemotePath = '/';
+        let selectedLocal = new Set();
+        let selectedRemote = new Set();
         let isConnected = false;
-        let currentEditingFile = null;
-        let aceEditor = null;
+        let localDirectoryHandle = null;
+        let contextMenuTarget = null;
+        let contextMenuSide = null;
 
-        // Check SFTP status on load
-        document.addEventListener('DOMContentLoaded', async function() {
-            await checkSFTPStatus();
-        });
+        // File input handlers
+        document.getElementById('file-input').addEventListener('change', handleLocalFilesSelected);
+        document.getElementById('folder-input').addEventListener('change', handleLocalFolderSelected);
 
-        async function checkSFTPStatus() {
-            try {
-                const response = await fetch('/api/sftp/status');
-                const data = await response.json();
-
-                if (data.connected) {
-                    isConnected = true;
-                    updateConnectionUI(true, data.host, data.username);
-                    await loadSFTP('/');
-                }
-            } catch (error) {
-                console.error('Error checking SFTP status:', error);
-            }
+        async function selectLocalFiles() {
+            document.getElementById('file-input').click();
         }
 
-        // Local folder selection
         async function selectLocalFolder() {
-            if (!window.showDirectoryPicker) {
-                alert('⚠️ Your browser does not support File System Access API. Please use Chrome/Edge.');
-                return;
-            }
-
-            try {
-                localFolderHandle = await window.showDirectoryPicker();
-                document.getElementById('local-breadcrumb').textContent = localFolderHandle.name;
-                document.getElementById('refresh-local-btn').style.display = 'block';
-                await loadLocal();
-            } catch (error) {
-                if (error.name !== 'AbortError') {
-                    showToast('Error selecting folder: ' + error.message);
+            if ('showDirectoryPicker' in window) {
+                try {
+                    localDirectoryHandle = await window.showDirectoryPicker();
+                    await loadLocalDirectory(localDirectoryHandle);
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('Error selecting folder:', err);
+                    }
                 }
+            } else {
+                // Fallback for browsers without File System Access API
+                document.getElementById('folder-input').click();
             }
         }
 
-        async function loadLocal() {
-            if (!localFolderHandle) return;
+        async function loadLocalDirectory(dirHandle, relativePath = '') {
+            localFiles = [];
+            document.getElementById('local-path').textContent = dirHandle.name + (relativePath || '');
 
             try {
-                localFiles = [];
-                for await (const entry of localFolderHandle.values()) {
-                    localFiles.push({
-                        name: entry.name,
-                        kind: entry.kind,
-                        handle: entry
-                    });
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const file = await entry.getFile();
+                        localFiles.push({
+                            name: entry.name,
+                            type: 'file',
+                            size: file.size,
+                            modified: file.lastModified,
+                            handle: entry,
+                            file: file
+                        });
+                    } else if (entry.kind === 'directory') {
+                        localFiles.push({
+                            name: entry.name,
+                            type: 'directory',
+                            handle: entry
+                        });
+                    }
                 }
-
-                localFiles.sort((a, b) => {
-                    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-                    return a.name.localeCompare(b.name);
-                });
-
-                renderLocal();
-            } catch (error) {
-                showToast('Error loading local files: ' + error.message);
+                renderLocalFiles();
+            } catch (err) {
+                console.error('Error loading directory:', err);
+                alert('Error loading directory: ' + err.message);
             }
         }
 
-        function renderLocal() {
+        function handleLocalFilesSelected(event) {
+            const files = Array.from(event.target.files);
+            localFiles = files.map(file => ({
+                name: file.name,
+                type: 'file',
+                size: file.size,
+                modified: file.lastModified,
+                file: file
+            }));
+
+            document.getElementById('local-path').textContent = `${files.length} file(s) selected`;
+            renderLocalFiles();
+        }
+
+        function handleLocalFolderSelected(event) {
+            const files = Array.from(event.target.files);
+            localFiles = files.map(file => ({
+                name: file.webkitRelativePath || file.name,
+                type: 'file',
+                size: file.size,
+                modified: file.lastModified,
+                file: file
+            }));
+
+            if (files.length > 0) {
+                const folderName = files[0].webkitRelativePath.split('/')[0];
+                document.getElementById('local-path').textContent = folderName;
+            }
+            renderLocalFiles();
+        }
+
+        function renderLocalFiles() {
             const list = document.getElementById('local-list');
 
             if (localFiles.length === 0) {
-                list.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><p>Empty folder</p></div>';
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <h3>No Files Selected</h3>
+                        <p>Click "Select Files" or "Select Folder" to browse your local device</p>
+                    </div>
+                `;
                 return;
             }
 
-            let html = '';
-            localFiles.forEach(file => {
-                const isDir = file.kind === 'directory';
-                const icon = isDir ? 'fa-folder' : getFileIcon(file.name);
-                const iconClass = isDir ? 'folder' : 'file';
-
-                html += `
-                    <div class="file-item">
-                        <div class="file-icon ${iconClass}">
-                            <i class="fas ${icon}"></i>
-                        </div>
-                        <div class="file-info">
-                            <div class="file-name">${file.name}</div>
-                            <div class="file-meta">${isDir ? 'Folder' : 'File'}</div>
-                        </div>
-                        ${!isDir ? `<button class="icon-btn" onclick="uploadToSFTP('${file.name}')" title="Upload to SFTP"><i class="fas fa-arrow-right"></i></button>` : ''}
+            list.innerHTML = localFiles.map((file, index) => `
+                <div class="file-item ${selectedLocal.has(index) ? 'selected' : ''}"
+                     draggable="true"
+                     onclick="toggleSelect('local', ${index})"
+                     ondragstart="handleDragStart(event, 'local', ${index})"
+                     ondragend="handleDragEnd(event)"
+                     oncontextmenu="showContextMenu(event, 'local', ${index})">
+                    <div class="file-icon ${file.type}">
+                        <i class="fas fa-${file.type === 'directory' ? 'folder' : 'file'}"></i>
                     </div>
-                `;
-            });
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-meta">
+                            ${file.size ? `<span>${formatSize(file.size)}</span>` : ''}
+                            ${file.modified ? `<span>${new Date(file.modified).toLocaleDateString()}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        ${isConnected ? `<button onclick="uploadToSFTP(event, ${index})" title="Upload"><i class="fas fa-upload"></i></button>` : ''}
+                    </div>
+                </div>
+            `).join('');
 
-            list.innerHTML = html;
+            setupDragAndDrop();
         }
 
-        function refreshLocal() {
-            loadLocal();
+        function renderRemoteFiles() {
+            const list = document.getElementById('remote-list');
+
+            if (!isConnected) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-plug"></i>
+                        <h3>Not Connected</h3>
+                        <p>Connect to an SFTP server to browse remote files</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (remoteFiles.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <h3>Empty Directory</h3>
+                        <p>This directory contains no files</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = remoteFiles.map((file, index) => `
+                <div class="file-item ${selectedRemote.has(index) ? 'selected' : ''}"
+                     onclick="handleRemoteClick(${index})"
+                     ondblclick="handleRemoteDoubleClick(${index})"
+                     oncontextmenu="showContextMenu(event, 'remote', ${index})">
+                    <div class="file-icon ${file.is_dir ? 'folder' : 'file'}">
+                        <i class="fas fa-${file.is_dir ? 'folder' : 'file'}"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-meta">
+                            ${file.size ? `<span>${formatSize(file.size)}</span>` : ''}
+                            ${file.permissions ? `<span>${file.permissions}</span>` : ''}
+                            ${file.modified ? `<span>${file.modified}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        ${!file.is_dir ? `<button onclick="downloadFromSFTP(event, ${index})" title="Download"><i class="fas fa-download"></i></button>` : ''}
+                        <button onclick="deleteRemote(event, ${index})" title="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            setupDragAndDrop();
+        }
+
+        // Selection
+        function toggleSelect(side, index) {
+            const set = side === 'local' ? selectedLocal : selectedRemote;
+            if (set.has(index)) {
+                set.delete(index);
+            } else {
+                set.add(index);
+            }
+            side === 'local' ? renderLocalFiles() : renderRemoteFiles();
+        }
+
+        function handleRemoteClick(index) {
+            toggleSelect('remote', index);
+        }
+
+        function handleRemoteDoubleClick(index) {
+            const file = remoteFiles[index];
+            if (file.is_dir) {
+                navigateToRemote(file.path);
+            }
         }
 
         // SFTP Connection
@@ -592,7 +883,11 @@
             document.getElementById('connect-modal').classList.add('show');
         }
 
-        async function connectSFTP(event) {
+        function closeConnectModal() {
+            document.getElementById('connect-modal').classList.remove('show');
+        }
+
+        async function connectToSFTP(event) {
             event.preventDefault();
 
             const host = document.getElementById('sftp-host').value;
@@ -612,382 +907,413 @@
                     body: formData
                 });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Connection failed');
-                }
-
                 const data = await response.json();
-                isConnected = true;
-                sftpPath = data.home_dir || '/';
 
-                closeModal('connect-modal');
-                updateConnectionUI(true, host, username);
-                showToast('✅ Connected to ' + host);
-                await loadSFTP(sftpPath);
-
+                if (response.ok) {
+                    isConnected = true;
+                    currentRemotePath = data.home_dir || '/';
+                    updateConnectionUI(true, host);
+                    closeConnectModal();
+                    await loadRemoteDirectory(currentRemotePath);
+                } else {
+                    alert('Connection failed: ' + data.detail);
+                }
             } catch (error) {
-                showToast('❌ Connection failed: ' + error.message);
+                alert('Connection error: ' + error.message);
             }
         }
 
-        async function disconnectSFTP() {
-            if (!confirm('Disconnect from SFTP server?')) return;
-
+        async function disconnect() {
             try {
                 await fetch('/api/sftp/disconnect', { method: 'POST' });
                 isConnected = false;
+                currentRemotePath = '/';
+                remoteFiles = [];
                 updateConnectionUI(false);
-                document.getElementById('sftp-list').innerHTML = '<div class="empty-state"><i class="fas fa-server" style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;"></i><p>Disconnected</p></div>';
-                showToast('Disconnected from SFTP server');
+                renderRemoteFiles();
             } catch (error) {
-                showToast('Error disconnecting: ' + error.message);
+                console.error('Disconnect error:', error);
             }
         }
 
-        function updateConnectionUI(connected, host = '', username = '') {
-            const statusBadge = document.getElementById('status-badge');
+        function updateConnectionUI(connected, host = '') {
+            const status = document.getElementById('connection-status');
             const connectBtn = document.getElementById('connect-btn');
             const disconnectBtn = document.getElementById('disconnect-btn');
-            const mkdirBtn = document.getElementById('mkdir-sftp-btn');
-            const refreshBtn = document.getElementById('refresh-sftp-btn');
+            const remoteButtons = ['new-file-btn', 'new-folder-btn', 'refresh-btn', 'go-btn'];
 
             if (connected) {
-                statusBadge.className = 'connection-status connected';
-                statusBadge.innerHTML = `<i class="fas fa-circle" style="font-size: 0.6rem;"></i><span>Connected: ${username}@${host}</span>`;
+                status.className = 'status-indicator connected';
+                status.innerHTML = `<i class="fas fa-circle"></i><span>Connected to ${host}</span>`;
                 connectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'block';
-                mkdirBtn.style.display = 'block';
-                refreshBtn.style.display = 'block';
+                disconnectBtn.style.display = 'flex';
+                document.getElementById('remote-path').disabled = false;
+                remoteButtons.forEach(id => document.getElementById(id).disabled = false);
             } else {
-                statusBadge.className = 'connection-status disconnected';
-                statusBadge.innerHTML = '<i class="fas fa-circle" style="font-size: 0.6rem;"></i><span>Disconnected</span>';
-                connectBtn.style.display = 'block';
+                status.className = 'status-indicator disconnected';
+                status.innerHTML = '<i class="fas fa-circle"></i><span>Disconnected</span>';
+                connectBtn.style.display = 'flex';
                 disconnectBtn.style.display = 'none';
-                mkdirBtn.style.display = 'none';
-                refreshBtn.style.display = 'none';
+                document.getElementById('remote-path').disabled = true;
+                remoteButtons.forEach(id => document.getElementById(id).disabled = true);
             }
         }
 
-        async function loadSFTP(path) {
-            if (!isConnected) return;
-
+        async function loadRemoteDirectory(path) {
             try {
                 const response = await fetch(`/api/sftp/list?path=${encodeURIComponent(path)}`);
-
-                if (!response.ok) {
-                    throw new Error('Failed to list directory');
-                }
-
                 const data = await response.json();
-                sftpPath = data.current_path;
-                sftpFiles = data.items;
 
-                renderSFTP();
-                document.getElementById('sftp-breadcrumb').textContent = sftpPath;
-
-                // Show/hide up button
-                const upBtn = document.getElementById('up-btn');
-                if (sftpPath !== '/' && sftpPath !== '') {
-                    upBtn.style.display = 'flex';
+                if (response.ok) {
+                    currentRemotePath = data.current_path;
+                    document.getElementById('remote-path').value = currentRemotePath;
+                    remoteFiles = data.items || [];
+                    renderRemoteFiles();
                 } else {
-                    upBtn.style.display = 'none';
+                    alert('Error loading directory: ' + data.detail);
                 }
-
             } catch (error) {
-                showToast('Error loading SFTP: ' + error.message);
+                alert('Error loading directory: ' + error.message);
             }
         }
 
-        function renderSFTP() {
-            const list = document.getElementById('sftp-list');
+        async function navigateToRemote(path) {
+            await loadRemoteDirectory(path);
+        }
 
-            if (sftpFiles.length === 0) {
-                list.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><p>Empty folder</p></div>';
-                return;
+        function goToPath() {
+            const path = document.getElementById('remote-path').value;
+            loadRemoteDirectory(path);
+        }
+
+        function refreshLocal() {
+            if (localDirectoryHandle) {
+                loadLocalDirectory(localDirectoryHandle);
             }
-
-            let html = '';
-            sftpFiles.forEach(file => {
-                const isDir = file.is_dir;
-                const icon = isDir ? 'fa-folder' : getFileIcon(file.name);
-                const iconClass = isDir ? 'folder' : 'file';
-                const isTextFile = !isDir && isEditableFile(file.name);
-
-                html += `
-                    <div class="file-item" ${isDir ? `onclick="loadSFTP('${file.path}')" style="cursor: pointer;"` : ''}>
-                        <div class="file-icon ${iconClass}">
-                            <i class="fas ${icon}"></i>
-                        </div>
-                        <div class="file-info">
-                            <div class="file-name">${file.name}</div>
-                            <div class="file-meta">${isDir ? 'Folder' : formatFileSize(file.size)} • ${file.permissions}</div>
-                        </div>
-                        ${isTextFile ? `<button class="icon-btn" onclick="event.stopPropagation(); openEditor('${file.path}', '${file.name}')" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
-                        ${!isDir ? `<button class="icon-btn" onclick="event.stopPropagation(); downloadFromSFTP('${file.path}', '${file.name}')" title="Download"><i class="fas fa-download"></i></button>` : ''}
-                        <button class="icon-btn" onclick="event.stopPropagation(); deleteSFTP('${file.path}')" title="Delete"><i class="fas fa-trash"></i></button>
-                    </div>
-                `;
-            });
-
-            list.innerHTML = html;
         }
 
-        function isEditableFile(filename) {
-            const editableExtensions = ['txt', 'js', 'py', 'html', 'css', 'json', 'xml', 'md', 'yml', 'yaml',
-                                       'sh', 'conf', 'cfg', 'ini', 'log', 'sql', 'php', 'java', 'c', 'cpp',
-                                       'h', 'hpp', 'ts', 'jsx', 'tsx', 'go', 'rs', 'rb', 'pl', 'lua'];
-            const ext = filename.split('.').pop().toLowerCase();
-            return editableExtensions.includes(ext);
+        function refreshRemote() {
+            if (isConnected) {
+                loadRemoteDirectory(currentRemotePath);
+            }
         }
 
-        function refreshSFTP() {
-            loadSFTP(sftpPath);
-        }
-
-        function goUpFolder() {
-            if (sftpPath === '/' || sftpPath === '') return;
-
-            // Get parent directory
-            const parentPath = sftpPath.substring(0, sftpPath.lastIndexOf('/'));
-            loadSFTP(parentPath || '/');
-        }
-
-        async function uploadToSFTP(filename) {
+        // Upload/Download
+        async function uploadToSFTP(event, index) {
+            event.stopPropagation();
             if (!isConnected) {
-                showToast('❌ Not connected to SFTP server');
+                alert('Not connected to SFTP server');
                 return;
             }
 
-            if (!localFolderHandle) return;
+            const file = localFiles[index];
+            if (!file.file) {
+                alert('Cannot upload directories yet');
+                return;
+            }
+
+            const remotePath = currentRemotePath + '/' + file.name;
 
             try {
-                const fileHandle = localFiles.find(f => f.name === filename && f.kind === 'file')?.handle;
-                if (!fileHandle) return;
-
-                const file = await fileHandle.getFile();
-                const remotePath = sftpPath + '/' + filename;
-
                 const formData = new FormData();
+                formData.append('file', file.file);
                 formData.append('remote_path', remotePath);
-                formData.append('file', file);
 
                 const response = await fetch('/api/sftp/upload', {
                     method: 'POST',
                     body: formData
                 });
 
-                if (!response.ok) throw new Error('Upload failed');
-
-                showToast('✅ Uploaded ' + filename);
-                await loadSFTP(sftpPath);
-
+                if (response.ok) {
+                    alert('File uploaded successfully!');
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Upload failed: ' + data.detail);
+                }
             } catch (error) {
-                showToast('❌ Upload failed: ' + error.message);
+                alert('Upload error: ' + error.message);
             }
         }
 
-        async function downloadFromSFTP(path, filename) {
+        async function downloadFromSFTP(event, index) {
+            event.stopPropagation();
+            const file = remoteFiles[index];
+
             try {
-                window.open(`/api/sftp/download?remote_path=${encodeURIComponent(path)}`, '_blank');
+                window.open(`/api/sftp/download?remote_path=${encodeURIComponent(file.path)}`, '_blank');
             } catch (error) {
-                showToast('Error downloading: ' + error.message);
+                alert('Download error: ' + error.message);
             }
         }
 
-        async function deleteSFTP(path) {
-            if (!confirm('Delete this item?')) return;
+        // SFTP Operations
+        async function createRemoteFile() {
+            const filename = prompt('Enter filename:');
+            if (!filename) return;
+
+            const path = currentRemotePath + '/' + filename;
 
             try {
                 const formData = new FormData();
                 formData.append('path', path);
+                formData.append('content', '');
 
-                const response = await fetch('/api/sftp/delete', {
+                const response = await fetch('/api/sftp/create', {
                     method: 'POST',
                     body: formData
                 });
 
-                if (!response.ok) throw new Error('Delete failed');
-
-                showToast('✅ Deleted successfully');
-                await loadSFTP(sftpPath);
-
+                if (response.ok) {
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Error: ' + data.detail);
+                }
             } catch (error) {
-                showToast('❌ Delete failed: ' + error.message);
+                alert('Error: ' + error.message);
             }
         }
 
-        function createFolderSFTP() {
-            document.getElementById('mkdir-modal').classList.add('show');
-        }
+        async function createRemoteFolder() {
+            const foldername = prompt('Enter folder name:');
+            if (!foldername) return;
 
-        async function submitCreateFolderSFTP(event) {
-            event.preventDefault();
-
-            const name = document.getElementById('folder-name').value;
+            const path = currentRemotePath + '/' + foldername;
 
             try {
                 const formData = new FormData();
-                formData.append('path', sftpPath);
-                formData.append('name', name);
+                formData.append('path', currentRemotePath);
+                formData.append('name', foldername);
 
                 const response = await fetch('/api/sftp/mkdir', {
                     method: 'POST',
                     body: formData
                 });
 
-                if (!response.ok) throw new Error('Failed to create folder');
-
-                closeModal('mkdir-modal');
-                showToast('✅ Folder created');
-                await loadSFTP(sftpPath);
-
+                if (response.ok) {
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Error: ' + data.detail);
+                }
             } catch (error) {
-                showToast('❌ Error: ' + error.message);
+                alert('Error: ' + error.message);
             }
         }
 
-        // File Editor Functions
-        async function openEditor(path, filename) {
-            try {
-                showToast('📖 Loading file...');
+        async function deleteRemote(event, index) {
+            event.stopPropagation();
+            const file = remoteFiles[index];
 
-                const response = await fetch(`/api/sftp/read?remote_path=${encodeURIComponent(path)}`);
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to read file');
-                }
-
-                const data = await response.json();
-                currentEditingFile = path;
-
-                document.getElementById('editor-filename').textContent = 'Edit: ' + filename;
-                document.getElementById('editor-modal').classList.add('show');
-
-                // Initialize Ace Editor if not already done
-                if (!aceEditor) {
-                    aceEditor = ace.edit("file-content");
-                    aceEditor.setTheme("ace/theme/monokai");
-                    aceEditor.setOptions({
-                        fontSize: "14px",
-                        showPrintMargin: false,
-                        enableBasicAutocompletion: true,
-                        enableLiveAutocompletion: true
-                    });
-                }
-
-                // Set syntax mode based on file extension
-                const ext = filename.split('.').pop().toLowerCase();
-                const mode = getAceMode(ext);
-                aceEditor.session.setMode(mode);
-
-                // Set file content
-                aceEditor.setValue(data.content, -1);
-
-                showToast('✅ File loaded');
-
-            } catch (error) {
-                showToast('❌ Error: ' + error.message);
-            }
-        }
-
-        async function saveFile() {
-            if (!currentEditingFile) return;
+            if (!confirm(`Delete ${file.name}?`)) return;
 
             try {
-                const content = aceEditor ? aceEditor.getValue() : '';
-
-                showToast('💾 Saving file...');
-
                 const formData = new FormData();
-                formData.append('remote_path', currentEditingFile);
-                formData.append('content', content);
+                formData.append('path', file.path);
 
-                const response = await fetch('/api/sftp/write', {
+                const response = await fetch('/api/sftp/delete', {
                     method: 'POST',
                     body: formData
                 });
 
-                if (!response.ok) throw new Error('Failed to save file');
-
-                const data = await response.json();
-                closeModal('editor-modal');
-                showToast('✅ ' + data.message);
-
-                // Refresh file list
-                await loadSFTP(sftpPath);
-
+                if (response.ok) {
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Error: ' + data.detail);
+                }
             } catch (error) {
-                showToast('❌ Save failed: ' + error.message);
+                alert('Error: ' + error.message);
             }
         }
 
-        function getAceMode(ext) {
-            const modeMap = {
-                'js': 'ace/mode/javascript',
-                'jsx': 'ace/mode/javascript',
-                'ts': 'ace/mode/typescript',
-                'tsx': 'ace/mode/typescript',
-                'py': 'ace/mode/python',
-                'php': 'ace/mode/php',
-                'java': 'ace/mode/java',
-                'c': 'ace/mode/c_cpp',
-                'cpp': 'ace/mode/c_cpp',
-                'h': 'ace/mode/c_cpp',
-                'hpp': 'ace/mode/c_cpp',
-                'go': 'ace/mode/golang',
-                'rs': 'ace/mode/rust',
-                'rb': 'ace/mode/ruby',
-                'pl': 'ace/mode/perl',
-                'lua': 'ace/mode/lua',
-                'html': 'ace/mode/html',
-                'css': 'ace/mode/css',
-                'json': 'ace/mode/json',
-                'xml': 'ace/mode/xml',
-                'md': 'ace/mode/markdown',
-                'yml': 'ace/mode/yaml',
-                'yaml': 'ace/mode/yaml',
-                'sh': 'ace/mode/sh',
-                'bash': 'ace/mode/sh',
-                'sql': 'ace/mode/sql',
-                'conf': 'ace/mode/text',
-                'cfg': 'ace/mode/ini',
-                'ini': 'ace/mode/ini',
-                'log': 'ace/mode/text',
-                'txt': 'ace/mode/text'
-            };
+        // Drag & Drop
+        let draggedItem = null;
+        let draggedSide = null;
 
-            return modeMap[ext] || 'ace/mode/text';
+        function handleDragStart(event, side, index) {
+            draggedItem = index;
+            draggedSide = side;
+            event.target.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'copy';
         }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('show');
+        function handleDragEnd(event) {
+            event.target.classList.remove('dragging');
         }
 
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-message').textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+        function setupDragAndDrop() {
+            const remotePanel = document.getElementById('remote-panel');
+            const localPanel = document.getElementById('local-panel');
+
+            // Remote panel - accept local files
+            remotePanel.addEventListener('dragover', (e) => {
+                if (draggedSide === 'local' && isConnected) {
+                    e.preventDefault();
+                    document.getElementById('remote-drop').classList.add('active');
+                }
+            });
+
+            remotePanel.addEventListener('dragleave', () => {
+                document.getElementById('remote-drop').classList.remove('active');
+            });
+
+            remotePanel.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                document.getElementById('remote-drop').classList.remove('active');
+
+                if (draggedSide === 'local' && draggedItem !== null) {
+                    await uploadToSFTP(e, draggedItem);
+                }
+            });
+
+            // Local panel - accept remote files (download)
+            localPanel.addEventListener('dragover', (e) => {
+                if (draggedSide === 'remote') {
+                    e.preventDefault();
+                    document.getElementById('local-drop').classList.add('active');
+                }
+            });
+
+            localPanel.addEventListener('dragleave', () => {
+                document.getElementById('local-drop').classList.remove('active');
+            });
+
+            localPanel.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                document.getElementById('local-drop').classList.remove('active');
+
+                if (draggedSide === 'remote' && draggedItem !== null) {
+                    await downloadFromSFTP(e, draggedItem);
+                }
+            });
         }
 
-        function getFileIcon(filename) {
-            const ext = filename.split('.').pop().toLowerCase();
-            const iconMap = {
-                'pdf': 'fa-file-pdf',
-                'doc': 'fa-file-word', 'docx': 'fa-file-word',
-                'jpg': 'fa-file-image', 'jpeg': 'fa-file-image', 'png': 'fa-file-image',
-                'mp4': 'fa-file-video',
-                'mp3': 'fa-file-audio',
-                'zip': 'fa-file-archive',
-                'txt': 'fa-file-alt',
-                'js': 'fa-file-code', 'py': 'fa-file-code'
-            };
-            return iconMap[ext] || 'fa-file';
+        // Context Menu
+        function showContextMenu(event, side, index) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            contextMenuTarget = index;
+            contextMenuSide = side;
+
+            const menu = document.getElementById('context-menu');
+            const file = side === 'local' ? localFiles[index] : remoteFiles[index];
+
+            let html = '';
+
+            if (side === 'remote') {
+                if (!file.is_dir) {
+                    html += `<div class="context-menu-item" onclick="downloadFromSFTP(event, ${index})"><i class="fas fa-download"></i><span>Download</span></div>`;
+                }
+                html += `<div class="context-menu-item" onclick="renameRemote(${index})"><i class="fas fa-edit"></i><span>Rename</span></div>`;
+                html += `<div class="context-menu-item" onclick="copyRemote(${index})"><i class="fas fa-copy"></i><span>Copy</span></div>`;
+                if (!file.is_dir) {
+                    html += `<div class="context-menu-item" onclick="chmodRemote(${index})"><i class="fas fa-lock"></i><span>Permissions</span></div>`;
+                }
+                html += `<div class="context-menu-divider"></div>`;
+                html += `<div class="context-menu-item danger" onclick="deleteRemote(event, ${index})"><i class="fas fa-trash"></i><span>Delete</span></div>`;
+            } else {
+                if (isConnected) {
+                    html += `<div class="context-menu-item" onclick="uploadToSFTP(event, ${index})"><i class="fas fa-upload"></i><span>Upload to SFTP</span></div>`;
+                }
+            }
+
+            menu.innerHTML = html;
+            menu.style.left = event.pageX + 'px';
+            menu.style.top = event.pageY + 'px';
+            menu.classList.add('show');
         }
 
-        function formatFileSize(bytes) {
+        document.addEventListener('click', () => {
+            document.getElementById('context-menu').classList.remove('show');
+        });
+
+        async function renameRemote(index) {
+            const file = remoteFiles[index];
+            const newName = prompt('Enter new name:', file.name);
+            if (!newName || newName === file.name) return;
+
+            const newPath = currentRemotePath + '/' + newName;
+
+            try {
+                const formData = new FormData();
+                formData.append('old_path', file.path);
+                formData.append('new_path', newPath);
+
+                const response = await fetch('/api/sftp/rename', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function copyRemote(index) {
+            const file = remoteFiles[index];
+            const newName = prompt('Copy to:', file.name + '_copy');
+            if (!newName) return;
+
+            const destPath = currentRemotePath + '/' + newName;
+
+            try {
+                const formData = new FormData();
+                formData.append('source_path', file.path);
+                formData.append('dest_path', destPath);
+
+                const response = await fetch('/api/sftp/copy', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function chmodRemote(index) {
+            const file = remoteFiles[index];
+            const mode = prompt('Enter permissions (e.g., 755, 644):', '644');
+            if (!mode) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('path', file.path);
+                formData.append('mode', mode);
+
+                const response = await fetch('/api/sftp/chmod', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Utility
+        function formatSize(bytes) {
             if (!bytes) return '0 B';
             const k = 1024;
             const sizes = ['B', 'KB', 'MB', 'GB'];

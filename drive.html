@@ -971,8 +971,7 @@
                 const data = await response.json();
 
                 if (!data.authenticated) {
-                    // Not authenticated, redirect to login
-                    window.location.href = '/login';
+                    // Not authenticated - server will handle redirect
                     return;
                 }
 
@@ -982,12 +981,9 @@
                     currentUser = await infoResponse.json();
                     updateAuthUI();
                     updateStorageInfo();
-                } else {
-                    window.location.href = '/login';
                 }
             } catch (error) {
                 console.error('Error checking authentication:', error);
-                window.location.href = '/login';
             }
         }
 

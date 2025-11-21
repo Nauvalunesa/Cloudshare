@@ -1708,8 +1708,14 @@ async def check_admin(request: Request):
     return {"is_admin": is_admin}
 
 @app.get("/drive")
-async def drive_dashboard():
-    """Serve the Google Drive-like dashboard"""
+async def drive_dashboard(request: Request):
+    """Serve the Google Drive-like dashboard (requires authentication)"""
+    # Check if user is authenticated
+    username = verify_user_token(request)
+    if not username:
+        # Not authenticated, redirect to login
+        return RedirectResponse(url="/login", status_code=302)
+
     return FileResponse("drive.html")
 
 
