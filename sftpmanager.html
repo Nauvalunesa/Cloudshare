@@ -316,12 +316,8 @@
         .file-actions {
             display: flex;
             gap: 0.3rem;
-            opacity: 0;
+            opacity: 1; /* Always visible now */
             transition: opacity 0.2s;
-        }
-
-        .file-item:hover .file-actions {
-            opacity: 1;
         }
 
         .file-actions button {
@@ -1029,6 +1025,19 @@
             });
         }
 
+        // Local file click handler
+        function handleLocalClickNew(event, index) {
+            // Ctrl+Click or Cmd+Click for multi-select
+            if (event.ctrlKey || event.metaKey) {
+                event.stopPropagation();
+                toggleSelect('local', index);
+                return;
+            }
+
+            // Regular click - just show info or toggle select
+            toggleSelect('local', index);
+        }
+
         // File input handlers
         document.getElementById('file-input').addEventListener('change', handleLocalFilesSelected);
         document.getElementById('folder-input').addEventListener('change', handleLocalFolderSelected);
@@ -1135,7 +1144,7 @@
             list.innerHTML = localFiles.map((file, index) => `
                 <div class="file-item ${selectedLocal.has(index) ? 'selected' : ''}"
                      draggable="true"
-                     onclick="toggleSelect('local', ${index})"
+                     onclick="handleLocalClickNew(event, ${index})"
                      ondragstart="handleDragStart(event, 'local', ${index})"
                      ondragend="handleDragEnd(event)"
                      oncontextmenu="showContextMenu(event, 'local', ${index})">
@@ -1150,7 +1159,7 @@
                         </div>
                     </div>
                     <div class="file-actions">
-                        ${isConnected ? `<button onclick="uploadToSFTP(event, ${index})" title="Upload"><i class="fas fa-upload"></i></button>` : ''}
+                        ${isConnected ? `<button onclick="event.stopPropagation(); uploadToSFTP(event, ${index})" title="Upload"><i class="fas fa-upload"></i></button>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -1190,8 +1199,7 @@
 
                 return `
                 <div class="file-item ${selectedRemote.has(index) ? 'selected' : ''}"
-                     onclick="handleRemoteClick(${index})"
-                     ondblclick="handleRemoteDoubleClick(${index})"
+                     onclick="handleRemoteClickNew(event, ${index})"
                      oncontextmenu="showContextMenu(event, 'remote', ${index})">
                     <div class="file-icon ${iconClass}">
                         <i class="${icon}"></i>
@@ -1205,8 +1213,20 @@
                         </div>
                     </div>
                     <div class="file-actions">
-                        ${!file.is_dir ? `<button onclick="downloadFromSFTP(event, ${index})" title="Download"><i class="fas fa-download"></i></button>` : ''}
-                        <button onclick="deleteRemote(event, ${index})" title="Delete"><i class="fas fa-trash"></i></button>
+                        ${!file.is_dir ? `
+                            <button onclick="event.stopPropagation(); viewFile(${index})" title="View">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); editFile(${index})" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); downloadFromSFTP(event, ${index})" title="Download">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        ` : ''}
+                        <button onclick="event.stopPropagation(); deleteRemote(event, ${index})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -1215,7 +1235,25 @@
             setupDragAndDrop();
         }
 
-        // Selection
+        // Selection - New behavior: single click to open, Ctrl+click to select
+        function handleRemoteClickNew(event, index) {
+            const file = remoteFiles[index];
+
+            // Ctrl+Click or Cmd+Click for multi-select
+            if (event.ctrlKey || event.metaKey) {
+                event.stopPropagation();
+                toggleSelect('remote', index);
+                return;
+            }
+
+            // Regular click - open file/folder
+            if (file.is_dir) {
+                navigateToRemote(file.path);
+            } else {
+                viewFile(index);
+            }
+        }
+
         function toggleSelect(side, index) {
             const set = side === 'local' ? selectedLocal : selectedRemote;
             if (set.has(index)) {
