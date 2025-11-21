@@ -484,6 +484,71 @@
             margin-bottom: 0.5rem;
         }
 
+        .empty-state p {
+            margin-bottom: 1rem;
+        }
+
+        .empty-state .quick-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Local Drop Zone - Always Visible */
+        .local-drop-zone {
+            position: absolute;
+            top: 120px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border: 3px dashed var(--local-accent);
+            border-radius: 12px;
+            background: rgba(156, 39, 176, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--local-accent);
+            font-size: 1.2rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .local-drop-zone:hover {
+            background: rgba(156, 39, 176, 0.1);
+            border-color: var(--local-accent);
+            transform: scale(1.02);
+        }
+
+        .local-drop-zone.active {
+            background: rgba(156, 39, 176, 0.2);
+            border-color: var(--local-accent);
+            border-width: 4px;
+        }
+
+        .local-drop-zone i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .local-drop-zone .drop-text {
+            margin-bottom: 0.5rem;
+        }
+
+        .local-drop-zone .drop-hint {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+        }
+
+        .file-list.has-files {
+            z-index: 2;
+            position: relative;
+        }
+
         /* Loading */
         .loading {
             display: inline-block;
@@ -565,13 +630,20 @@
             </div>
             <div class="path-bar">
                 <i class="fas fa-folder"></i>
-                <span id="local-path">Select files or folder to begin</span>
+                <span id="local-path">Drag files here or click to browse</span>
             </div>
-            <div class="file-list" id="local-list">
-                <div class="empty-state">
-                    <i class="fas fa-folder-open"></i>
-                    <h3>No Files Selected</h3>
-                    <p>Click "Select Files" or "Select Folder" to browse your local device</p>
+            <div class="file-list" id="local-list"></div>
+            <div class="local-drop-zone" id="local-drop-zone" onclick="selectLocalFolder()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <div class="drop-text">📁 Drag & Drop Files Here</div>
+                <div class="drop-hint">or click anywhere to browse your device</div>
+                <div class="quick-actions" style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary" onclick="event.stopPropagation(); selectLocalFiles()">
+                        <i class="fas fa-file"></i> Select Files
+                    </button>
+                    <button class="btn btn-primary" onclick="event.stopPropagation(); selectLocalFolder()">
+                        <i class="fas fa-folder"></i> Select Folder
+                    </button>
                 </div>
             </div>
             <div class="drop-overlay" id="local-drop">
@@ -679,6 +751,130 @@
         let contextMenuTarget = null;
         let contextMenuSide = null;
 
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupLocalDropZone();
+            tryRestoreLastFolder();
+        });
+
+        // Try to restore last opened folder from localStorage
+        async function tryRestoreLastFolder() {
+            const lastFolderPath = localStorage.getItem('sftp_last_folder');
+            if (lastFolderPath && 'showDirectoryPicker' in window) {
+                // Auto-request folder access on load
+                const autoLoad = localStorage.getItem('sftp_auto_load');
+                if (autoLoad === 'true') {
+                    // Silently try to restore (won't work without user gesture, but worth trying)
+                    console.log('Last folder:', lastFolderPath);
+                }
+            }
+        }
+
+        // Setup local drop zone for drag & drop
+        function setupLocalDropZone() {
+            const dropZone = document.getElementById('local-drop-zone');
+            const localPanel = document.getElementById('local-panel');
+
+            // Handle drag over entire panel
+            localPanel.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('active');
+            });
+
+            localPanel.addEventListener('dragleave', (e) => {
+                if (e.target === localPanel) {
+                    dropZone.classList.remove('active');
+                }
+            });
+
+            localPanel.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('active');
+
+                const items = e.dataTransfer.items;
+                if (items) {
+                    await handleDroppedItems(items);
+                }
+            });
+        }
+
+        // Handle dropped files/folders
+        async function handleDroppedItems(items) {
+            localFiles = [];
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry();
+
+                    if (entry) {
+                        if (entry.isFile) {
+                            const file = await item.getAsFile();
+                            if (file) {
+                                localFiles.push({
+                                    name: file.name,
+                                    type: 'file',
+                                    size: file.size,
+                                    modified: file.lastModified,
+                                    file: file
+                                });
+                            }
+                        } else if (entry.isDirectory) {
+                            await readDirectory(entry);
+                        }
+                    } else {
+                        // Fallback for single file
+                        const file = item.getAsFile();
+                        if (file) {
+                            localFiles.push({
+                                name: file.name,
+                                type: 'file',
+                                size: file.size,
+                                modified: file.lastModified,
+                                file: file
+                            });
+                        }
+                    }
+                }
+            }
+
+            if (localFiles.length > 0) {
+                document.getElementById('local-path').textContent = `${localFiles.length} file(s) loaded`;
+                renderLocalFiles();
+            }
+        }
+
+        // Read directory recursively
+        async function readDirectory(dirEntry, path = '') {
+            const dirReader = dirEntry.createReader();
+
+            return new Promise((resolve) => {
+                dirReader.readEntries(async (entries) => {
+                    for (const entry of entries) {
+                        const fullPath = path ? `${path}/${entry.name}` : entry.name;
+
+                        if (entry.isFile) {
+                            entry.file((file) => {
+                                localFiles.push({
+                                    name: fullPath,
+                                    type: 'file',
+                                    size: file.size,
+                                    modified: file.lastModified,
+                                    file: file
+                                });
+                            });
+                        } else if (entry.isDirectory) {
+                            await readDirectory(entry, fullPath);
+                        }
+                    }
+                    resolve();
+                });
+            });
+        }
+
         // File input handlers
         document.getElementById('file-input').addEventListener('change', handleLocalFilesSelected);
         document.getElementById('folder-input').addEventListener('change', handleLocalFolderSelected);
@@ -691,6 +887,8 @@
             if ('showDirectoryPicker' in window) {
                 try {
                     localDirectoryHandle = await window.showDirectoryPicker();
+                    localStorage.setItem('sftp_last_folder', localDirectoryHandle.name);
+                    localStorage.setItem('sftp_auto_load', 'true');
                     await loadLocalDirectory(localDirectoryHandle);
                 } catch (err) {
                     if (err.name !== 'AbortError') {
@@ -767,17 +965,18 @@
 
         function renderLocalFiles() {
             const list = document.getElementById('local-list');
+            const dropZone = document.getElementById('local-drop-zone');
 
             if (localFiles.length === 0) {
-                list.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-folder-open"></i>
-                        <h3>No Files Selected</h3>
-                        <p>Click "Select Files" or "Select Folder" to browse your local device</p>
-                    </div>
-                `;
+                dropZone.style.display = 'flex';
+                list.innerHTML = '';
+                list.classList.remove('has-files');
                 return;
             }
+
+            // Hide drop zone, show files
+            dropZone.style.display = 'none';
+            list.classList.add('has-files');
 
             list.innerHTML = localFiles.map((file, index) => `
                 <div class="file-item ${selectedLocal.has(index) ? 'selected' : ''}"
