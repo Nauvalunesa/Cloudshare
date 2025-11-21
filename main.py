@@ -2518,7 +2518,7 @@ async def sftp_create_directory(request: Request, path: str = Form(...), name: s
 
 
 @app.get("/api/sftp/read")
-async def sftp_read_file(remote_path: str, request: Request):
+async def sftp_read_file(path: str, request: Request):
     """Read file content from SFTP server for editing"""
     try:
         session_id = get_or_create_session(request)
@@ -2529,7 +2529,7 @@ async def sftp_read_file(remote_path: str, request: Request):
         sftp = sftp_connections[session_id]['sftp']
 
         # Read file content
-        with sftp.open(remote_path, 'r') as remote_file:
+        with sftp.open(path, 'r') as remote_file:
             content = remote_file.read()
 
         # Try to decode as text
@@ -2545,8 +2545,8 @@ async def sftp_read_file(remote_path: str, request: Request):
         return {
             "success": True,
             "content": text_content,
-            "path": remote_path,
-            "filename": os.path.basename(remote_path)
+            "path": path,
+            "filename": os.path.basename(path)
         }
 
     except HTTPException:
@@ -2559,7 +2559,7 @@ async def sftp_read_file(remote_path: str, request: Request):
 @app.post("/api/sftp/write")
 async def sftp_write_file(
     request: Request,
-    remote_path: str = Form(...),
+    path: str = Form(...),
     content: str = Form(...)
 ):
     """Write/save file content to SFTP server"""
@@ -2572,12 +2572,12 @@ async def sftp_write_file(
         sftp = sftp_connections[session_id]['sftp']
 
         # Write content to file
-        with sftp.open(remote_path, 'w') as remote_file:
+        with sftp.open(path, 'w') as remote_file:
             remote_file.write(content.encode('utf-8'))
 
         return {
             "success": True,
-            "message": f"File saved: {os.path.basename(remote_path)}"
+            "message": f"File saved: {os.path.basename(path)}"
         }
 
     except Exception as e:
