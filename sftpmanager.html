@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced SFTP Manager - CloudShare</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -268,9 +270,28 @@
             color: #ffa726;
         }
 
-        .file-icon.file {
-            color: var(--text-secondary);
-        }
+        /* File type specific colors */
+        .file-icon.js { color: #f7df1e; }
+        .file-icon.json { color: #f7df1e; }
+        .file-icon.py { color: #3776ab; }
+        .file-icon.html { color: #e34c26; }
+        .file-icon.css { color: #264de4; }
+        .file-icon.php { color: #8892be; }
+        .file-icon.md { color: #083fa1; }
+        .file-icon.txt { color: var(--text-secondary); }
+        .file-icon.sh { color: #89e051; }
+        .file-icon.yml, .file-icon.yaml { color: #cb171e; }
+        .file-icon.xml { color: #e37933; }
+        .file-icon.sql { color: #00758f; }
+        .file-icon.go { color: #00add8; }
+        .file-icon.rs { color: #dea584; }
+        .file-icon.java { color: #f89820; }
+        .file-icon.cpp, .file-icon.c { color: #00599c; }
+        .file-icon.rb { color: #cc342d; }
+        .file-icon.vue { color: #42b883; }
+        .file-icon.ts { color: #3178c6; }
+        .file-icon.jsx, .file-icon.tsx { color: #61dafb; }
+        .file-icon.file { color: var(--text-secondary); }
 
         .file-info {
             flex: 1;
@@ -409,8 +430,90 @@
             border-radius: 12px;
             padding: 2rem;
             min-width: 400px;
-            max-width: 500px;
+            max-width: 90vw;
+            max-height: 90vh;
             border: 1px solid var(--border);
+            overflow: auto;
+        }
+
+        /* Editor Modal - Larger */
+        .modal-content.editor-modal {
+            min-width: 80vw;
+            min-height: 80vh;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-darker);
+        }
+
+        .editor-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .editor-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        #editor-container {
+            flex: 1;
+            min-height: 500px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .editor-footer {
+            padding: 1rem 2rem;
+            background: var(--bg-darker);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-stats {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .close-editor {
+            position: absolute;
+            top: 1.5rem;
+            right: 2rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .close-editor:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
         }
 
         .modal-title {
@@ -730,6 +833,42 @@
         </div>
     </div>
 
+    <!-- File Editor Modal -->
+    <div class="modal" id="editor-modal">
+        <div class="modal-content editor-modal">
+            <button class="close-editor" onclick="closeEditor()">&times;</button>
+            <div class="editor-header">
+                <div class="editor-title">
+                    <i class="fas fa-file-code"></i>
+                    <span id="editor-filename">Untitled</span>
+                </div>
+                <div class="editor-info">
+                    <span><i class="fas fa-code"></i> <span id="editor-language">plaintext</span></span>
+                    <span><i class="fas fa-hdd"></i> <span id="editor-size">0 B</span></span>
+                    <span id="editor-modified" style="display: none; color: var(--warning);">
+                        <i class="fas fa-circle"></i> Modified
+                    </span>
+                </div>
+            </div>
+            <div id="editor-container"></div>
+            <div class="editor-footer">
+                <div class="editor-stats">
+                    <span><i class="fas fa-stream"></i> Lines: <strong id="editor-lines">0</strong></span>
+                    <span><i class="fas fa-text-width"></i> Chars: <strong id="editor-chars">0</strong></span>
+                    <span><i class="fas fa-map-marker-alt"></i> Ln <strong id="editor-ln">1</strong>, Col <strong id="editor-col">1</strong></span>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditor()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveFile()" id="save-btn">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Context Menu -->
     <div class="context-menu" id="context-menu">
         <!-- Will be populated dynamically -->
@@ -751,11 +890,26 @@
         let contextMenuTarget = null;
         let contextMenuSide = null;
 
+        // Monaco Editor
+        let monacoEditor = null;
+        let currentEditingFile = null;
+        let editorOriginalContent = '';
+
+        // Initialize Monaco Editor
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             setupLocalDropZone();
             tryRestoreLastFolder();
+            initMonacoEditor();
         });
+
+        function initMonacoEditor() {
+            require(['vs/editor/editor.main'], function () {
+                console.log('Monaco Editor loaded');
+            });
+        }
 
         // Try to restore last opened folder from localStorage
         async function tryRestoreLastFolder() {
@@ -1029,13 +1183,18 @@
                 return;
             }
 
-            list.innerHTML = remoteFiles.map((file, index) => `
+            list.innerHTML = remoteFiles.map((file, index) => {
+                const ext = getFileExtension(file.name);
+                const iconClass = file.is_dir ? 'folder' : ext;
+                const icon = file.is_dir ? 'fas fa-folder' : getFileIcon(file.name);
+
+                return `
                 <div class="file-item ${selectedRemote.has(index) ? 'selected' : ''}"
                      onclick="handleRemoteClick(${index})"
                      ondblclick="handleRemoteDoubleClick(${index})"
                      oncontextmenu="showContextMenu(event, 'remote', ${index})">
-                    <div class="file-icon ${file.is_dir ? 'folder' : 'file'}">
-                        <i class="fas fa-${file.is_dir ? 'folder' : 'file'}"></i>
+                    <div class="file-icon ${iconClass}">
+                        <i class="${icon}"></i>
                     </div>
                     <div class="file-info">
                         <div class="file-name">${file.name}</div>
@@ -1050,7 +1209,8 @@
                         <button onclick="deleteRemote(event, ${index})" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             setupDragAndDrop();
         }
@@ -1074,6 +1234,9 @@
             const file = remoteFiles[index];
             if (file.is_dir) {
                 navigateToRemote(file.path);
+            } else {
+                // Double-click file to view it
+                viewFile(index);
             }
         }
 
@@ -1403,10 +1566,14 @@
             let html = '';
 
             if (side === 'remote') {
+                // View and Edit options for files
                 if (!file.is_dir) {
+                    html += `<div class="context-menu-item" onclick="viewFile(${index})"><i class="fas fa-eye"></i><span>View</span></div>`;
+                    html += `<div class="context-menu-item" onclick="editFile(${index})"><i class="fas fa-edit"></i><span>Edit</span></div>`;
+                    html += `<div class="context-menu-divider"></div>`;
                     html += `<div class="context-menu-item" onclick="downloadFromSFTP(event, ${index})"><i class="fas fa-download"></i><span>Download</span></div>`;
                 }
-                html += `<div class="context-menu-item" onclick="renameRemote(${index})"><i class="fas fa-edit"></i><span>Rename</span></div>`;
+                html += `<div class="context-menu-item" onclick="renameRemote(${index})"><i class="fas fa-i-cursor"></i><span>Rename</span></div>`;
                 html += `<div class="context-menu-item" onclick="copyRemote(${index})"><i class="fas fa-copy"></i><span>Copy</span></div>`;
                 if (!file.is_dir) {
                     html += `<div class="context-menu-item" onclick="chmodRemote(${index})"><i class="fas fa-lock"></i><span>Permissions</span></div>`;
@@ -1509,6 +1676,256 @@
             } catch (error) {
                 alert('Error: ' + error.message);
             }
+        }
+
+        // ==== FILE VIEWER/EDITOR ====
+
+        function getFileExtension(filename) {
+            const parts = filename.split('.');
+            return parts.length > 1 ? parts.pop().toLowerCase() : '';
+        }
+
+        function getFileIcon(filename) {
+            const ext = getFileExtension(filename);
+            const iconMap = {
+                // Programming
+                'js': 'fab fa-js-square',
+                'jsx': 'fab fa-react',
+                'ts': 'fab fa-js-square',
+                'tsx': 'fab fa-react',
+                'py': 'fab fa-python',
+                'rb': 'fas fa-gem',
+                'php': 'fab fa-php',
+                'java': 'fab fa-java',
+                'c': 'fas fa-file-code',
+                'cpp': 'fas fa-file-code',
+                'go': 'fas fa-file-code',
+                'rs': 'fas fa-file-code',
+                'swift': 'fab fa-swift',
+
+                // Web
+                'html': 'fab fa-html5',
+                'css': 'fab fa-css3-alt',
+                'scss': 'fab fa-sass',
+                'sass': 'fab fa-sass',
+                'less': 'fab fa-less',
+                'vue': 'fab fa-vuejs',
+
+                // Config/Data
+                'json': 'fas fa-brackets-curly',
+                'xml': 'fas fa-file-code',
+                'yml': 'fas fa-file-code',
+                'yaml': 'fas fa-file-code',
+                'toml': 'fas fa-file-code',
+                'ini': 'fas fa-file-code',
+                'env': 'fas fa-file-code',
+
+                // Database
+                'sql': 'fas fa-database',
+
+                // Docs
+                'md': 'fab fa-markdown',
+                'txt': 'fas fa-file-alt',
+                'pdf': 'fas fa-file-pdf',
+                'doc': 'fas fa-file-word',
+                'docx': 'fas fa-file-word',
+
+                // Shell
+                'sh': 'fas fa-terminal',
+                'bash': 'fas fa-terminal',
+                'zsh': 'fas fa-terminal',
+
+                // Other
+                'git': 'fab fa-git-alt',
+                'gitignore': 'fab fa-git-alt',
+                'log': 'fas fa-file-alt'
+            };
+
+            return iconMap[ext] || 'fas fa-file';
+        }
+
+        function getLanguageForFile(filename) {
+            const ext = getFileExtension(filename);
+            const languageMap = {
+                'js': 'javascript',
+                'jsx': 'javascript',
+                'ts': 'typescript',
+                'tsx': 'typescript',
+                'py': 'python',
+                'rb': 'ruby',
+                'php': 'php',
+                'java': 'java',
+                'c': 'c',
+                'cpp': 'cpp',
+                'go': 'go',
+                'rs': 'rust',
+                'swift': 'swift',
+                'html': 'html',
+                'css': 'css',
+                'scss': 'scss',
+                'sass': 'sass',
+                'less': 'less',
+                'vue': 'html',
+                'json': 'json',
+                'xml': 'xml',
+                'yml': 'yaml',
+                'yaml': 'yaml',
+                'toml': 'ini',
+                'ini': 'ini',
+                'sql': 'sql',
+                'md': 'markdown',
+                'sh': 'shell',
+                'bash': 'shell',
+                'log': 'plaintext'
+            };
+
+            return languageMap[ext] || 'plaintext';
+        }
+
+        async function viewFile(index) {
+            await editFile(index, true); // View mode is same as edit but read-only
+        }
+
+        async function editFile(index, readOnly = false) {
+            const file = remoteFiles[index];
+            if (file.is_dir) return;
+
+            try {
+                // Fetch file content
+                const response = await fetch(`/api/sftp/read?path=${encodeURIComponent(file.path)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to read file');
+                }
+
+                const data = await response.json();
+                const content = data.content || '';
+
+                currentEditingFile = file;
+                editorOriginalContent = content;
+
+                // Show editor modal
+                const modal = document.getElementById('editor-modal');
+                modal.classList.add('show');
+
+                // Update header info
+                document.getElementById('editor-filename').textContent = file.name;
+                document.getElementById('editor-language').textContent = getLanguageForFile(file.name);
+                document.getElementById('editor-size').textContent = formatSize(file.size || content.length);
+                document.getElementById('editor-modified').style.display = 'none';
+
+                // Save button visibility
+                document.getElementById('save-btn').style.display = readOnly ? 'none' : 'flex';
+
+                // Create or update Monaco Editor
+                require(['vs/editor/editor.main'], function () {
+                    const container = document.getElementById('editor-container');
+                    container.innerHTML = ''; // Clear previous editor
+
+                    monacoEditor = monaco.editor.create(container, {
+                        value: content,
+                        language: getLanguageForFile(file.name),
+                        theme: 'vs-dark',
+                        automaticLayout: true,
+                        fontSize: 14,
+                        minimap: { enabled: true },
+                        scrollBeyondLastLine: false,
+                        readOnly: readOnly,
+                        lineNumbers: 'on',
+                        renderLineHighlight: 'all',
+                        folding: true,
+                        wordWrap: 'off',
+                        bracketPairColorization: {
+                            enabled: true
+                        }
+                    });
+
+                    // Update stats
+                    updateEditorStats();
+
+                    // Listen for content changes
+                    monacoEditor.onDidChangeModelContent(() => {
+                        updateEditorStats();
+                        const currentContent = monacoEditor.getValue();
+                        const isModified = currentContent !== editorOriginalContent;
+                        document.getElementById('editor-modified').style.display = isModified ? 'flex' : 'none';
+                    });
+
+                    // Listen for cursor position changes
+                    monacoEditor.onDidChangeCursorPosition(() => {
+                        updateEditorStats();
+                    });
+                });
+
+            } catch (error) {
+                alert('Error loading file: ' + error.message);
+            }
+        }
+
+        function updateEditorStats() {
+            if (!monacoEditor) return;
+
+            const model = monacoEditor.getModel();
+            const position = monacoEditor.getPosition();
+
+            const lines = model.getLineCount();
+            const chars = model.getValue().length;
+            const ln = position.lineNumber;
+            const col = position.column;
+
+            document.getElementById('editor-lines').textContent = lines;
+            document.getElementById('editor-chars').textContent = chars;
+            document.getElementById('editor-ln').textContent = ln;
+            document.getElementById('editor-col').textContent = col;
+        }
+
+        async function saveFile() {
+            if (!monacoEditor || !currentEditingFile) return;
+
+            const content = monacoEditor.getValue();
+
+            try {
+                const formData = new FormData();
+                formData.append('path', currentEditingFile.path);
+                formData.append('content', content);
+
+                const response = await fetch('/api/sftp/write', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    editorOriginalContent = content;
+                    document.getElementById('editor-modified').style.display = 'none';
+                    alert('✅ File saved successfully!');
+                    await refreshRemote();
+                } else {
+                    const data = await response.json();
+                    alert('Error saving file: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error saving file: ' + error.message);
+            }
+        }
+
+        function closeEditor() {
+            if (monacoEditor) {
+                const currentContent = monacoEditor.getValue();
+                const isModified = currentContent !== editorOriginalContent;
+
+                if (isModified) {
+                    if (!confirm('You have unsaved changes. Close anyway?')) {
+                        return;
+                    }
+                }
+
+                monacoEditor.dispose();
+                monacoEditor = null;
+            }
+
+            currentEditingFile = null;
+            editorOriginalContent = '';
+
+            document.getElementById('editor-modal').classList.remove('show');
         }
 
         // Utility
