@@ -434,8 +434,8 @@
 
         /* Editor Modal - Larger */
         .modal-content.editor-modal {
-            min-width: 80vw;
-            min-height: 80vh;
+            min-width: 95vw;
+            min-height: 90vh;
             padding: 0;
             display: flex;
             flex-direction: column;
@@ -680,6 +680,170 @@
 
         ::-webkit-scrollbar-thumb:hover {
             background: var(--hover);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            /* Stack panels vertically on mobile */
+            .container {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 72px);
+            }
+
+            .panel {
+                min-height: 50vh;
+                border-right: none;
+                border-bottom: 2px solid var(--border);
+            }
+
+            .panel:last-child {
+                border-bottom: none;
+            }
+
+            /* Adjust header for mobile */
+            .header {
+                padding: 0.8rem 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            /* Panel headers */
+            .panel-header {
+                padding: 0.8rem 1rem;
+            }
+
+            .panel-title {
+                font-size: 1rem;
+            }
+
+            /* Connection form adjustments */
+            .connection-form {
+                padding: 1rem;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-group {
+                width: 100%;
+            }
+
+            /* File items - make touch friendly */
+            .file-item {
+                padding: 0.8rem;
+                min-height: 60px;
+            }
+
+            .file-name {
+                font-size: 0.9rem;
+            }
+
+            .file-meta {
+                font-size: 0.75rem;
+            }
+
+            /* Larger touch targets for buttons */
+            .file-actions button {
+                width: 40px;
+                height: 40px;
+            }
+
+            .icon-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            /* Button adjustments */
+            button, .btn {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            /* Editor modal - full screen on mobile */
+            .modal-content.editor-modal {
+                min-width: 100vw;
+                min-height: 100vh;
+                max-width: 100vw;
+                max-height: 100vh;
+                border-radius: 0;
+                margin: 0;
+            }
+
+            .editor-header {
+                padding: 1rem;
+            }
+
+            .editor-title {
+                font-size: 0.9rem;
+            }
+
+            .editor-info {
+                font-size: 0.75rem;
+            }
+
+            .editor-footer {
+                padding: 0.8rem 1rem;
+            }
+
+            .editor-stats {
+                font-size: 0.75rem;
+                gap: 0.8rem;
+            }
+
+            /* Context menu */
+            .context-menu {
+                min-width: 180px;
+            }
+
+            /* Drop zone */
+            .local-drop-zone {
+                padding: 2rem 1rem;
+            }
+
+            .local-drop-zone i {
+                font-size: 2.5rem;
+            }
+
+            .drop-text {
+                font-size: 1rem;
+            }
+
+            /* Breadcrumb */
+            .breadcrumb {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            /* Hide some less critical info on very small screens */
+            @media (max-width: 480px) {
+                .file-meta span:not(:first-child) {
+                    display: none;
+                }
+
+                .editor-info {
+                    display: none;
+                }
+
+                .panel-actions .icon-btn:not(:first-child) {
+                    display: none;
+                }
+            }
+        }
+
+        /* Tablet adjustments */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .panel {
+                min-width: 400px;
+            }
+
+            .modal-content.editor-modal {
+                min-width: 90vw;
+                min-height: 85vh;
+            }
         }
     </style>
 </head>
