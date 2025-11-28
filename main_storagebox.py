@@ -805,19 +805,12 @@ def get_user_storage_path(username: str) -> str:
     return os.path.join(USER_STORAGE_DIR, username)
 
 def calculate_user_storage(username: str) -> int:
-    """Calculate total storage used by user in bytes"""
-    user_path = get_user_storage_path(username)
-    if not os.path.exists(user_path):
-        return 0
-
+    """Calculate total storage used by user in bytes (from metadata, not disk)"""
+    # Since files are stored on FTP storagebox, we calculate from metadata
     total_size = 0
-    for root, dirs, files in os.walk(user_path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            try:
-                total_size += os.path.getsize(file_path)
-            except:
-                pass
+    for filename, data in uploaded_files.items():
+        if data.get("owner_username") == username:
+            total_size += data.get("size", 0)
     return total_size
 
 load_short_urls()
@@ -2024,14 +2017,15 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         final_name = f"{name}{ext}"
         internal_name = f"{final_name}.enc"
 
-        # Store in user's folder
-        user_storage_path = get_user_storage_path(username)
-        os.makedirs(user_storage_path, exist_ok=True)
-        path = os.path.join(user_storage_path, internal_name)
+        # Upload to storagebox via FTP (user folder on FTP)
+        ftp_user_folder = f"{username}"  # Folder for this user on FTP
+        ftp_filename = f"{ftp_user_folder}/{internal_name}"
 
-        # Save file
-        with open(path, "wb") as buffer:
-            buffer.write(encrypted_content)
+        try:
+            ftp_upload_file(ftp_filename, encrypted_content)
+        except Exception as e:
+            logger.error(f"FTP upload failed for drive: {e}")
+            raise HTTPException(status_code=500, detail=f"Upload to storage failed: {str(e)}")
 
         # Generate share ID
         share_id = generate_share_id()
@@ -2039,7 +2033,7 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
 
         # Store metadata
         uploaded_files[final_name] = {
-            "path": path,
+            "path": ftp_filename,  # Store FTP path instead of local path
             "expires_at": None,  # No expiry for drive files
             "original_name": file.filename,
             "size": file_size,
@@ -2054,8 +2048,12 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         }
         save_uploaded_files()
 
-        # Update user storage
-        users[username]["storage_used"] = calculate_user_storage(username)
+        # Update user storage (sum from metadata, not disk)
+        users[username]["storage_used"] = sum(
+            data.get("size", 0)
+            for fname, data in uploaded_files.items()
+            if data.get("owner_username") == username
+        )
         save_users()
 
         base_url = get_base_url(request)
