@@ -202,6 +202,20 @@ def get_real_ip(request: Request) -> str:
 
     return ip
 
+def get_base_url(request: Request) -> str:
+    """Get base URL from request headers (supports proxy/reverse proxy)"""
+    # Check for forwarded protocol and host
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "http")
+    forwarded_host = request.headers.get("X-Forwarded-Host")
+
+    if forwarded_host:
+        # Behind reverse proxy (nginx, cloudflare, etc)
+        return f"{forwarded_proto}://{forwarded_host}"
+
+    # Direct access - use request.base_url
+    base_url = str(request.base_url).rstrip('/')
+    return base_url
+
 def is_browser_request(request: Request) -> bool:
     user_agent = request.headers.get("User-Agent", "").lower()
     accept = request.headers.get("Accept", "").lower()
@@ -659,7 +673,7 @@ def advanced_page(request: Request):
 
 
 @app.post("/shorten")
-def shorten_url(original_url: str = Form(...), custom_alias: Optional[str] = Form(None), expires_in_minutes: Optional[int] = Form(None)):
+def shorten_url(request: Request, original_url: str = Form(...), custom_alias: Optional[str] = Form(None), expires_in_minutes: Optional[int] = Form(None)):
     try:
         if not original_url.startswith(('http://', 'https://')):
             raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
@@ -678,12 +692,13 @@ def shorten_url(original_url: str = Form(...), custom_alias: Optional[str] = For
         }
         save_short_urls()
 
-        short_url = f"https://nauval.cloud/s/{code}"
+        base_url = get_base_url(request)
+        short_url = f"{base_url}/s/{code}"
         return {
             "short_url": short_url,
             "expires_at": expiry.isoformat() if expiry else None,
             "code": code,
-            "qr_code_url": f"https://nauval.cloud/qr/{code}",
+            "qr_code_url": f"{base_url}/qr/{code}",
             "qr_code_base64": generate_qr_base64(short_url)
         }
     except Exception as e:
@@ -718,10 +733,11 @@ def generate_qr(code: str, request: Request):
     if not check_qr_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail=f"Too many QR code requests. Limit: {MAX_QR_REQUESTS_PER_MINUTE}/minute")
 
+    base_url = get_base_url(request)
     if code in short_urls:
-        target = f"https://nauval.cloud/s/{code}"
+        target = f"{base_url}/s/{code}"
     elif code in uploaded_files:
-        target = f"https://nauval.cloud/download/{code}"
+        target = f"{base_url}/download/{code}"
     else:
         raise HTTPException(status_code=404, detail="Code not found")
 
@@ -807,7 +823,8 @@ async def upload_file(request: Request, response: Response, file: UploadFile = F
 
         asyncio.create_task(cleanup_progress(upload_id))
 
-        url = f"https://nauval.cloud/download/{final_name}"
+        base_url = get_base_url(request)
+        url = f"{base_url}/download/{final_name}"
 
 
         active_uploads[client_ip] = max(0, active_uploads[client_ip] - 1)
@@ -829,7 +846,7 @@ async def upload_file(request: Request, response: Response, file: UploadFile = F
             "filename": final_name,
             "original_name": file.filename,
             "size": file_size,
-            "qr_code_url": f"https://nauval.cloud/qr/{final_name}",
+            "qr_code_url": f"{base_url}/qr/{final_name}",
             "qr_code_base64": generate_qr_base64(url),
             "upload_id": upload_id
         }
@@ -1292,12 +1309,13 @@ async def create_biolink(
         save_biolinks()
 
         bio_url = f"/bio/{username}"
+        base_url = get_base_url(request)
 
         return {
             "success": True,
             "url": bio_url,
             "username": username,
-            "preview_url": f"https://nauval.cloud{bio_url}"
+            "preview_url": f"{base_url}{bio_url}"
         }
 
     except HTTPException:
@@ -1392,7 +1410,8 @@ async def bulk_upload(request: Request, files: List[UploadFile] = File(...), exp
                     "hmac": file_hmac,
                     "downloads": 0
                 }
-                url = f"https://nauval.cloud/download/{final_name}"
+                base_url = get_base_url(request)
+                url = f"{base_url}/download/{final_name}"
                 results.append({"filename": file.filename, "success": True, "url": url, "code": final_name})
             except Exception as e:
                 results.append({"filename": file.filename, "success": False, "error": str(e)})
@@ -1799,6 +1818,7 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         users[username]["storage_used"] = calculate_user_storage(username)
         save_users()
 
+        base_url = get_base_url(request)
         return {
             "success": True,
             "filename": final_name,
@@ -1806,7 +1826,7 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
             "size": file_size,
             "created_at": datetime.utcnow().isoformat(),
             "share_id": share_id,
-            "share_url": f"https://nauval.cloud/f/{share_id}",
+            "share_url": f"{base_url}/f/{share_id}",
             "storage_used": users[username]["storage_used"],
             "storage_quota": users[username]["storage_quota"]
         }
@@ -1914,6 +1934,7 @@ async def get_file_info_by_share(share_id: str, request: Request):
 
         data = uploaded_files[filename]
 
+        base_url = get_base_url(request)
         return {
             "filename": filename,
             "original_name": data.get("original_name", filename),
@@ -1922,7 +1943,7 @@ async def get_file_info_by_share(share_id: str, request: Request):
             "expires_at": data.get("expires_at").isoformat() if data.get("expires_at") else None,
             "downloads": data.get("downloads", 0),
             "download_url": f"/download/{filename}",
-            "share_url": f"https://nauval.cloud/f/{share_id}",
+            "share_url": f"{base_url}/f/{share_id}",
             "file_type": filename.split('.')[-1] if '.' in filename else 'unknown'
         }
     except HTTPException:
