@@ -188,15 +188,33 @@ def check_creation_limit(ip: str, resource_type: str, max_limit: int) -> bool:
     return True
 
 def get_real_ip(request: Request) -> str:
+    """Get real client IP, handling proxies and Cloudflare"""
+    # Priority order for IP headers (most reliable first)
+    # 1. CF-Connecting-IP (Cloudflare real visitor IP)
+    ip = request.headers.get("CF-Connecting-IP")
+    if ip:
+        return ip.strip()
+
+    # 2. X-Real-IP (Nginx real client IP)
+    ip = request.headers.get("X-Real-IP")
+    if ip:
+        return ip.strip()
+
+    # 3. X-Forwarded-For (may contain multiple IPs, take first/original client)
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
+        # First IP is the original client, rest are proxies
         ip = forwarded_for.split(",")[0].strip()
-    else:
-        try:
-            ip = request.client.host or socket.gethostbyname(socket.gethostname())
-        except:
-            ip = "unknown"
+        if ip:
+            return ip
 
+    # 4. Fallback to direct connection IP
+    try:
+        ip = request.client.host or "unknown"
+    except:
+        ip = "unknown"
+
+    # Validate IP format
     if ip != "unknown" and not all(c.isdigit() or c in '.:-' for c in ip):
         return "unknown"
 
