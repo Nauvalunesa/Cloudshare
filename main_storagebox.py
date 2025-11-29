@@ -2067,7 +2067,7 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         internal_name = f"{final_name}.enc"
 
         # Upload to storagebox via FTP (user folder on FTP)
-        ftp_user_folder = f"user/{username}"  # Folder: {basepath}/user/username/
+        ftp_user_folder = f"{username}"  # Folder: {basepath}/{username}/
         ftp_filename = f"{ftp_user_folder}/{internal_name}"
 
         try:
