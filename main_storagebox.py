@@ -178,6 +178,24 @@ def ftp_upload_file(filename: str, file_data: bytes) -> bool:
                 sftp, transport = ftp_connect()
                 remote_path = f"{FTP_BASE_PATH}/{filename}"
 
+                # Create parent directories if they don't exist
+                parent_dir = '/'.join(remote_path.split('/')[:-1])
+                if parent_dir:
+                    try:
+                        sftp.stat(parent_dir)
+                    except FileNotFoundError:
+                        # Create directories recursively
+                        dirs = parent_dir.split('/')
+                        current_path = ''
+                        for dir_name in dirs:
+                            if not dir_name:
+                                continue
+                            current_path += f'/{dir_name}' if current_path else dir_name
+                            try:
+                                sftp.stat(current_path)
+                            except FileNotFoundError:
+                                sftp.mkdir(current_path)
+
                 # Upload file
                 with sftp.file(remote_path, 'wb') as remote_file:
                     remote_file.write(file_data)
@@ -188,6 +206,19 @@ def ftp_upload_file(filename: str, file_data: bytes) -> bool:
             else:
                 ftp, _ = ftp_connect()
                 remote_path = f"{FTP_BASE_PATH}/{filename}"
+
+                # Create parent directories for FTP
+                path_parts = filename.split('/')
+                if len(path_parts) > 1:
+                    # Navigate and create directories
+                    for i, part in enumerate(path_parts[:-1]):
+                        try:
+                            ftp.cwd(part)
+                        except:
+                            ftp.mkd(part)
+                            ftp.cwd(part)
+                    # Reset to base path
+                    ftp.cwd(FTP_BASE_PATH)
 
                 # Upload file
                 ftp.storbinary(f'STOR {filename}', BytesIO(file_data))
@@ -405,15 +436,33 @@ def check_creation_limit(ip: str, resource_type: str, max_limit: int) -> bool:
     return True
 
 def get_real_ip(request: Request) -> str:
+    """Get real client IP, handling proxies and Cloudflare"""
+    # Priority order for IP headers (most reliable first)
+    # 1. CF-Connecting-IP (Cloudflare real visitor IP)
+    ip = request.headers.get("CF-Connecting-IP")
+    if ip:
+        return ip.strip()
+
+    # 2. X-Real-IP (Nginx real client IP)
+    ip = request.headers.get("X-Real-IP")
+    if ip:
+        return ip.strip()
+
+    # 3. X-Forwarded-For (may contain multiple IPs, take first/original client)
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
+        # First IP is the original client, rest are proxies
         ip = forwarded_for.split(",")[0].strip()
-    else:
-        try:
-            ip = request.client.host or socket.gethostbyname(socket.gethostname())
-        except:
-            ip = "unknown"
+        if ip:
+            return ip
 
+    # 4. Fallback to direct connection IP
+    try:
+        ip = request.client.host or "unknown"
+    except:
+        ip = "unknown"
+
+    # Validate IP format
     if ip != "unknown" and not all(c.isdigit() or c in '.:-' for c in ip):
         return "unknown"
 
@@ -2018,7 +2067,7 @@ async def drive_upload(request: Request, response: Response, file: UploadFile = 
         internal_name = f"{final_name}.enc"
 
         # Upload to storagebox via FTP (user folder on FTP)
-        ftp_user_folder = f"{username}"  # Folder for this user on FTP
+        ftp_user_folder = f"user/{username}"  # Folder: {basepath}/user/username/
         ftp_filename = f"{ftp_user_folder}/{internal_name}"
 
         try:
