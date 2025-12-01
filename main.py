@@ -690,19 +690,29 @@ def advanced_page(request: Request):
 
 
 
+from fastapi import Request
+
 @app.post("/shorten")
-def shorten_url(request: Request, original_url: str = Form(...), custom_alias: Optional[str] = Form(None), expires_in_minutes: Optional[int] = Form(None)):
+def shorten_url(
+    request: Request,                             # <-- tambahkan ini
+    original_url: str = Form(...),
+    custom_alias: Optional[str] = Form(None),
+    expires_in_minutes: Optional[int] = Form(None)
+):
     try:
         if not original_url.startswith(('http://', 'https://')):
             raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
 
         code = custom_alias.strip() if custom_alias else generate_code()
+
         if custom_alias and not custom_alias.replace('-', '').replace('_', '').isalnum():
             raise HTTPException(status_code=400, detail="Alias can only contain letters, numbers, hyphens, and underscores")
+
         if code in short_urls:
             raise HTTPException(status_code=400, detail="Alias already in use")
 
         expiry = datetime.utcnow() + timedelta(minutes=expires_in_minutes) if expires_in_minutes else None
+
         short_urls[code] = {
             "url": original_url,
             "expires_at": expiry,
@@ -712,6 +722,7 @@ def shorten_url(request: Request, original_url: str = Form(...), custom_alias: O
 
         base_url = get_base_url(request)
         short_url = f"{base_url}/s/{code}"
+
         return {
             "short_url": short_url,
             "expires_at": expiry.isoformat() if expiry else None,
@@ -719,9 +730,11 @@ def shorten_url(request: Request, original_url: str = Form(...), custom_alias: O
             "qr_code_url": f"{base_url}/qr/{code}",
             "qr_code_base64": generate_qr_base64(short_url)
         }
+
     except Exception as e:
         logger.error(f"Error shortening URL: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 
 @app.get("/s/{code}")
 def redirect_short_url(code: str):
